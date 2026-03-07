@@ -1,0 +1,3946 @@
+<!DOCTYPE html>
+<html lang="ar">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Taraneem Editor Pro - محرّر الترانيم</title>
+    <!-- Google Fonts: Cairo for a modern Arabic look -->
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <!-- Lucide Icons & Export Tools -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+        :root {
+            /* Light Theme (Default) */
+            --primary-color: #6c5ce7;
+            --secondary-color: #a29bfe;
+            --accent-color: #00cec9;
+            --bg-color: #e8eaed;
+            --surface-color: #ffffff;
+            --text-color: #2d3436;
+            --chord-color: #d63031;
+            --border-radius: 16px;
+
+            /* 3D / Neumorphism Colors */
+            --shadow-light: #ffffff;
+            --shadow-dark: #d1d8e0;
+            --input-bg: #e8eaed;
+
+            --preview-chord-bg: rgba(255, 255, 255, 0.95);
+            --logo-size: 180px;
+            /* للتحكم بحجم اللوجو */
+        }
+
+        /* Dark Theme overrides */
+        [data-theme="dark"] {
+            --primary-color: #a29bfe;
+            --secondary-color: #6c5ce7;
+            --accent-color: #81ecec;
+            --bg-color: #2d3436;
+            --surface-color: #353b48;
+            --text-color: #dfe6e9;
+            --chord-color: #ff7675;
+            --shadow-light: #3b4453;
+            --shadow-dark: #1f2429;
+            --input-bg: #2d3436;
+            --preview-chord-bg: rgba(53, 59, 72, 0.8);
+        }
+
+        /* ميزة التصدير */
+        .preview-container[data-exporting="true"] {
+            background: white !important;
+            color: black !important;
+            box-shadow: none !important;
+        }
+
+        .preview-container[data-exporting="true"] .song-title {
+            color: #6c5ce7 !important;
+            letter-spacing: normal !important;
+        }
+
+        .preview-container[data-exporting="true"] .chord {
+            color: #d63031 !important;
+            background: transparent !important;
+        }
+
+        .preview-container[data-exporting="true"] .song-meta {
+            color: #636e72 !important;
+            border-bottom-color: #f1f2f6 !important;
+        }
+
+        .preview-container[data-exporting="true"] .hide-on-export {
+            display: none !important;
+        }
+
+        body {
+            font-family: 'Cairo', sans-serif;
+            direction: rtl;
+            margin: 0;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            min-height: 100vh;
+            transition: background-color 0.3s, color 0.3s;
+            padding-bottom: 120px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            display: block;
+            gap: 20px;
+            transition: all 0.3s;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 20px;
+            position: relative;
+            padding-top: 20px;
+        }
+
+        h1 {
+            color: var(--primary-color);
+            margin: 0;
+            font-size: 2.2rem;
+            font-weight: 800;
+            text-shadow: 2px 2px 4px var(--shadow-dark);
+        }
+
+        .subtitle {
+            font-size: 0.9rem;
+            font-weight: 600;
+            opacity: 0.7;
+            letter-spacing: 1px;
+        }
+
+        .sticky-toolbar {
+            position: sticky;
+            top: 20px;
+            z-index: 1000;
+            background: var(--surface-color);
+            padding: 15px 25px;
+            border-radius: 50px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .toolbar-group {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .theme-toggle {
+            background: var(--bg-color);
+            border: none;
+            cursor: pointer;
+            padding: 12px;
+            border-radius: 50%;
+            box-shadow: inset 3px 3px 6px var(--shadow-dark), inset -3px -3px 6px var(--shadow-light);
+            color: var(--text-color);
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .theme-toggle:hover {
+            color: var(--primary-color);
+        }
+
+        @keyframes spin {
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        .spin {
+            animation: spin 2s linear infinite;
+        }
+
+        .editor-tabs {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+            background: var(--bg-color);
+            padding: 10px;
+            border-radius: 20px;
+            box-shadow: inset 5px 5px 10px var(--shadow-dark), inset -5px -5px 10px var(--shadow-light);
+        }
+
+        .editor-tab-btn {
+            flex: 1;
+            padding: 12px 20px;
+            text-align: center;
+            border-radius: 12px;
+            cursor: pointer;
+            font-weight: 700;
+            color: var(--text-color);
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .editor-tab-btn.active {
+            background: var(--primary-color);
+            color: white;
+            box-shadow: 0 4px 15px rgba(108, 92, 231, 0.4);
+        }
+
+        .editor-tab-content {
+            display: none;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .editor-tab-content.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .control-panel {
+            background: var(--bg-color);
+            padding: 30px;
+            border-radius: var(--border-radius);
+            box-shadow: 8px 8px 20px var(--shadow-dark), -8px -8px 20px var(--shadow-light);
+            margin-bottom: 30px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 25px;
+            align-items: start;
+        }
+
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        label {
+            font-size: 0.95rem;
+            font-weight: 700;
+            color: var(--text-color);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        input,
+        textarea,
+        select {
+            width: 100%;
+            padding: 15px 20px;
+            border: none;
+            border-radius: 12px;
+            font-family: inherit;
+            font-size: 1rem;
+            box-sizing: border-box;
+            background: var(--input-bg);
+            color: var(--text-color);
+            box-shadow: inset 4px 4px 8px var(--shadow-dark), inset -4px -4px 8px var(--shadow-light);
+            transition: all 0.3s;
+        }
+
+        input:focus,
+        textarea:focus {
+            outline: none;
+            box-shadow: inset 6px 6px 12px var(--shadow-dark), inset -6px -6px 12px var(--shadow-light);
+            border-bottom: 2px solid var(--primary-color);
+        }
+
+        textarea {
+            height: 250px;
+            resize: vertical;
+            line-height: 1.8;
+        }
+
+        button {
+            padding: 10px 20px;
+            font-size: 0.9rem;
+            cursor: pointer;
+            border: none;
+            border-radius: 50px;
+            font-weight: 700;
+            font-family: inherit;
+            color: var(--text-color);
+            background: var(--bg-color);
+            box-shadow: 5px 5px 10px var(--shadow-dark), -5px -5px 10px var(--shadow-light);
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        button span {
+            pointer-events: none;
+        }
+
+        button:active {
+            box-shadow: inset 3px 3px 6px var(--shadow-dark), inset -3px -3px 6px var(--shadow-light);
+            transform: translateY(2px);
+        }
+
+        .btn-icon {
+            padding: 10px;
+            border-radius: 50%;
+        }
+
+        .btn-primary {
+            color: var(--primary-color);
+        }
+
+        .btn-success {
+            color: #00b894;
+        }
+
+        .btn-danger {
+            color: #ff7675;
+        }
+
+        .btn-warning {
+            color: #fdcb6e;
+        }
+
+        .btn-solid-primary {
+            background: var(--primary-color);
+            color: white;
+            box-shadow: 0 4px 15px rgba(108, 92, 231, 0.4);
+        }
+
+        .btn-solid-primary:active {
+            background: #5a4bcf;
+            color: white;
+            box-shadow: inset 2px 2px 5px rgba(0, 0, 0, 0.2);
+        }
+
+        .btn-solid-warning {
+            background: #d35400;
+            color: white;
+            box-shadow: 0 4px 15px rgba(211, 84, 0, 0.4);
+        }
+
+        .btn-edit-mode {
+            background: var(--bg-color);
+            color: var(--text-color);
+            border: 2px solid transparent;
+        }
+
+        .btn-edit-mode.active {
+            background: var(--primary-color);
+            color: white;
+            box-shadow: inset 2px 2px 5px rgba(0, 0, 0, 0.2);
+        }
+
+        .range-control {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            padding: 10px;
+            background: var(--input-bg);
+            border-radius: 50px;
+            box-shadow: inset 3px 3px 6px var(--shadow-dark), inset -3px -3px 6px var(--shadow-light);
+        }
+
+        input[type="range"] {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 100%;
+            height: 6px;
+            background: rgba(0, 0, 0, 0.1);
+            border-radius: 5px;
+            outline: none;
+            box-shadow: none;
+            padding: 0;
+        }
+
+        [data-theme="dark"] input[type="range"] {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: var(--primary-color);
+            cursor: pointer;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+        }
+
+        .range-val {
+            font-weight: 800;
+            color: var(--primary-color);
+            min-width: 40px;
+            text-align: left;
+        }
+
+        .editor-workspace {
+            display: grid;
+            grid-template-columns: 1fr 320px;
+            gap: 30px;
+            align-items: start;
+            transition: all 0.3s;
+        }
+
+        @media (max-width: 950px) {
+            .editor-workspace {
+                grid-template-columns: 1fr;
+            }
+
+            .chords-sidebar {
+                order: -1;
+                position: static !important;
+                width: 100% !important;
+                height: auto !important;
+            }
+
+            .sticky-toolbar {
+                justify-content: center;
+            }
+        }
+
+        .preview-container {
+            background: var(--surface-color);
+            color: var(--text-color);
+            padding: 20px 40px 40px 40px;
+            border-radius: var(--border-radius);
+            box-shadow: 8px 8px 20px var(--shadow-dark), -8px -8px 20px var(--shadow-light);
+            min-height: 600px;
+            position: relative;
+            line-height: 1.8;
+            transition: outline 0.3s, background-color 0.3s, color 0.3s;
+            --preview-font-size: 24px;
+            --header-font-size: 36px;
+            --chord-size: 16px;
+            --line-spacing: 1.6em;
+        }
+
+        .empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            min-height: 400px;
+            color: #b2bec3;
+            text-align: center;
+            gap: 20px;
+        }
+
+        .empty-state i {
+            color: var(--primary-color);
+            opacity: 0.5;
+            width: 64px;
+            height: 64px;
+        }
+
+        .empty-state h3 {
+            font-size: 1.5rem;
+            margin: 0;
+            color: var(--text-color);
+            opacity: 0.7;
+        }
+
+        .empty-state p {
+            font-size: 1rem;
+            max-width: 300px;
+        }
+
+        #previewContent {
+            white-space: pre-wrap;
+            width: 100%;
+        }
+
+        .lyrics-wrapper {
+            font-size: var(--preview-font-size);
+            margin-top: 30px;
+            max-width: 100%;
+        }
+
+        .song-title {
+            text-align: center;
+            font-weight: 800;
+            font-size: var(--header-font-size);
+            margin-bottom: 0.2em;
+            color: var(--primary-color);
+        }
+
+        .song-meta {
+            text-align: left;
+            margin-bottom: 0px;
+            font-size: calc(var(--header-font-size) * 0.45);
+            color: #636e72;
+            font-weight: 700;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px dashed #dfe6e9;
+            padding-bottom: 10px;
+            line-height: 1.1;
+        }
+
+        [data-theme="dark"] .song-meta {
+            border-bottom-color: #4b6584;
+            color: #a4b0be;
+        }
+
+        .logo-display {
+            max-height: var(--logo-size);
+            max-width: var(--logo-size);
+            width: auto;
+            height: auto;
+            object-fit: contain;
+        }
+
+        .line {
+            position: relative;
+            margin-bottom: var(--line-spacing);
+            cursor: default;
+            padding: 5px 0;
+            border-radius: 8px;
+            transition: background 0.2s;
+            display: block;
+            width: 100%;
+            text-align: right;
+            font-size: var(--preview-font-size);
+        }
+
+        .song-header+.line {
+            margin-top: -0.2em;
+        }
+
+        .edit-mode-active .line {
+            cursor: pointer;
+        }
+
+        .edit-mode-active .line:hover {
+            background: rgba(108, 92, 231, 0.08);
+        }
+
+        .section-header {
+            color: var(--chord-color);
+            font-weight: 800;
+            font-size: 0.9em;
+            margin-top: 0.2em;
+            margin-bottom: 2em;
+            border-bottom: 2px solid rgba(250, 177, 160, 0.5);
+            display: inline-block;
+            padding-bottom: 2px;
+        }
+
+        .copy-section-btn {
+            cursor: pointer;
+            color: var(--primary-color);
+            opacity: 0.5;
+            transition: all 0.2s ease;
+            vertical-align: middle;
+            margin-right: 10px;
+        }
+
+        .copy-section-btn:hover {
+            opacity: 1;
+            transform: scale(1.1);
+        }
+
+        .chord {
+            position: absolute;
+            top: -1.8em;
+            font-size: var(--chord-size);
+            font-weight: 800;
+            color: var(--chord-color);
+            background: transparent;
+            padding: 2px 4px;
+            border-radius: 0;
+            user-select: none;
+            direction: ltr;
+            box-shadow: none;
+            z-index: 10;
+            border: none;
+            touch-action: none;
+            transform: translateX(50%);
+            cursor: default;
+        }
+
+        .edit-mode-active .chord {
+            cursor: move;
+        }
+
+        .edit-mode-active .chord:hover {
+            transform: translateX(50%) scale(1.15);
+            z-index: 11;
+        }
+
+        .chords-sidebar {
+            background: var(--surface-color);
+            padding: 25px;
+            border-radius: var(--border-radius);
+            box-shadow: 8px 8px 20px var(--shadow-dark), -8px -8px 20px var(--shadow-light);
+            position: sticky;
+            top: 120px;
+            max-height: calc(100vh - 140px);
+            overflow-y: auto;
+            scrollbar-width: thin;
+        }
+
+        .sidebar-section {
+            margin-bottom: 30px;
+        }
+
+        .sidebar-title {
+            font-size: 1.1rem;
+            color: var(--primary-color);
+            font-weight: 800;
+            margin-bottom: 15px;
+            border-bottom: 2px solid var(--bg-color);
+            padding-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .transpose-controls {
+            display: flex;
+            gap: 15px;
+            background: var(--bg-color);
+            padding: 10px;
+            border-radius: 50px;
+            box-shadow: inset 3px 3px 6px var(--shadow-dark), inset -3px -3px 6px var(--shadow-light);
+        }
+
+        .transpose-btn {
+            flex: 1;
+            justify-content: center;
+            box-shadow: none;
+            background: transparent;
+            padding: 5px;
+        }
+
+        .transpose-btn:hover {
+            background: var(--surface-color);
+            box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.1);
+        }
+
+        .transpose-btn:active {
+            box-shadow: inset 2px 2px 5px rgba(0, 0, 0, 0.1);
+        }
+
+        .chord-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(55px, 1fr));
+            gap: 12px;
+        }
+
+        .chord-btn {
+            padding: 12px 0;
+            border-radius: 12px;
+            font-weight: 800;
+            color: var(--text-color);
+            text-align: center;
+            justify-content: center;
+            direction: ltr;
+            font-size: 1rem;
+            background: var(--bg-color);
+            box-shadow: 4px 4px 8px var(--shadow-dark), -4px -4px 8px var(--shadow-light);
+        }
+
+        .chord-btn:active,
+        .chord-btn.selected {
+            box-shadow: inset 4px 4px 8px var(--shadow-dark), inset -4px -4px 8px var(--shadow-light);
+            color: var(--primary-color);
+        }
+
+        .custom-chord-input {
+            width: 100%;
+            margin-bottom: 15px;
+            text-align: center;
+            direction: ltr;
+            font-weight: bold;
+        }
+
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(5px);
+            z-index: 9999;
+            justify-content: center;
+            align-items: center;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+            opacity: 1;
+        }
+
+        .modal-content {
+            background: var(--bg-color);
+            padding: 40px 5%;
+            border-radius: 0;
+            width: 100vw;
+            height: 100vh;
+            max-width: none;
+            max-height: none;
+            overflow-y: auto;
+            box-sizing: border-box;
+            border: none;
+            box-shadow: none;
+        }
+
+        [data-theme="dark"] .modal-content {
+            border: none;
+            box-shadow: none;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 2px dashed var(--shadow-dark);
+        }
+
+        .modal-title {
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: var(--primary-color);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .close-btn {
+            background: var(--input-bg);
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: #ff7675;
+            border: none;
+            cursor: pointer;
+            box-shadow: 4px 4px 8px var(--shadow-dark), -4px -4px 8px var(--shadow-light);
+            transition: all 0.2s;
+            padding: 0;
+        }
+
+        .close-btn:hover {
+            color: #d63031;
+            transform: scale(1.1);
+            box-shadow: inset 4px 4px 8px var(--shadow-dark), inset -4px -4px 8px var(--shadow-light);
+        }
+
+        .tabs {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 25px;
+            background: var(--input-bg);
+            padding: 8px;
+            border-radius: 16px;
+            box-shadow: inset 4px 4px 8px var(--shadow-dark), inset -4px -4px 8px var(--shadow-light);
+            flex-wrap: wrap;
+        }
+
+        .tab-btn {
+            flex: 1;
+            min-width: 150px;
+            padding: 12px;
+            border-radius: 12px;
+            justify-content: center;
+            font-weight: 700;
+            color: var(--text-color);
+            box-shadow: none;
+            background: transparent;
+        }
+
+        .tab-btn.active {
+            background: var(--surface-color);
+            color: var(--primary-color);
+            box-shadow: 4px 4px 8px rgba(0, 0, 0, 0.05);
+        }
+
+        .tab-content {
+            display: none;
+            animation: fadeIn 0.3s;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .list-item {
+            background: var(--surface-color);
+            padding: 20px;
+            border-radius: 16px;
+            margin-bottom: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 4px 4px 10px var(--shadow-dark), -4px -4px 10px var(--shadow-light);
+            transition: transform 0.2s;
+        }
+
+        .list-item:hover {
+            transform: translateY(-2px);
+        }
+
+        .list-item-info strong {
+            display: block;
+            font-size: 1.2rem;
+            color: var(--text-color);
+            margin-bottom: 5px;
+        }
+
+        .list-item-info span {
+            font-size: 0.9rem;
+            color: var(--primary-color);
+            font-weight: 700;
+            background: var(--bg-color);
+            padding: 4px 10px;
+            border-radius: 50px;
+            display: inline-block;
+            margin-bottom: 5px;
+        }
+
+        .list-item-actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+        }
+
+        body.performance-mode {
+            background-color: #000000 !important;
+            color: #ffffff !important;
+            padding: 0;
+            overflow-x: hidden;
+        }
+
+        body.performance-mode header,
+        body.performance-mode .sticky-toolbar,
+        body.performance-mode .editor-tabs,
+        body.performance-mode .editor-tab-content,
+        body.performance-mode .chords-sidebar,
+        body.performance-mode .theme-toggle,
+        body.performance-mode .quick-settings-fab,
+        body.performance-mode #quickSettingsPanel {
+            display: none !important;
+        }
+
+        body.performance-mode .container {
+            max-width: 100%;
+            gap: 0;
+            margin: 0;
+            padding: 0;
+        }
+
+        body.performance-mode .editor-workspace {
+            grid-template-columns: 1fr;
+        }
+
+        body.performance-mode .preview-container {
+            background: #000000 !important;
+            color: #ffffff !important;
+            box-shadow: none;
+            min-height: 100vh;
+            border-radius: 0;
+            padding: 60px 20px 150px 20px;
+            display: block;
+        }
+
+        body.performance-mode .song-title {
+            color: #a29bfe !important;
+            font-size: calc(var(--header-font-size) * 1.2);
+        }
+
+        body.performance-mode .song-meta {
+            border-bottom-color: #333 !important;
+            color: #aaa !important;
+        }
+
+        body.performance-mode .section-header {
+            color: #ffeaa7 !important;
+            border-bottom-color: #ffeaa7 !important;
+        }
+
+        body.performance-mode .chord {
+            color: #fdcb6e !important;
+            background: transparent !important;
+            font-size: calc(var(--chord-size) * 1.1) !important;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+            border: none;
+            box-shadow: none;
+            top: -1.8em !important;
+            cursor: default !important;
+        }
+
+        body.performance-mode .line {
+            display: block;
+            padding: 10px 0;
+            width: 100%;
+            text-align: right;
+            margin-bottom: 2em;
+            cursor: default !important;
+        }
+
+        body.performance-mode .line:hover {
+            background: transparent;
+        }
+
+        body.performance-mode #previewContent {
+            width: 100%;
+            max-width: 900px;
+            margin: 0 auto;
+            text-align: right;
+        }
+
+        .perf-controls {
+            display: none;
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(30, 39, 46, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 15px 30px;
+            border-radius: 50px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+            z-index: 10000;
+            gap: 20px;
+            align-items: center;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: white;
+        }
+
+        body.performance-mode .perf-controls {
+            display: flex;
+        }
+
+        .perf-controls button {
+            background: rgba(255, 255, 255, 0.1);
+            box-shadow: none;
+            color: white;
+            padding: 12px 24px;
+        }
+
+        .perf-controls button:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .perf-controls .btn-danger {
+            background: rgba(214, 48, 49, 0.2);
+            color: #ff7675;
+        }
+
+        .perf-controls .btn-accent {
+            background: var(--primary-color);
+            color: white;
+        }
+
+        .perf-controls .btn-warning {
+            background: #fdcb6e;
+            color: #2d3436 !important;
+            font-weight: bold;
+        }
+
+        .perf-controls input[type="range"] {
+            box-shadow: none;
+            padding: 0;
+            width: 120px;
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        #fileInput,
+        #logoInput {
+            display: none;
+        }
+
+        #saveStatus {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            left: auto;
+            background: var(--surface-color);
+            padding: 12px 25px;
+            border-radius: 50px;
+            font-weight: bold;
+            color: var(--primary-color);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+            opacity: 0;
+            transform: translateY(20px);
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            pointer-events: none;
+            z-index: 9999;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        #saveStatus.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* نافذة تسجيل الدخول */
+        #loginModalOverlay {
+            display: flex;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(8px);
+            z-index: 10000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .login-box {
+            background: var(--bg-color);
+            padding: 40px;
+            border-radius: var(--border-radius);
+            box-shadow: 15px 15px 30px rgba(0, 0, 0, 0.2), -15px -15px 30px rgba(255, 255, 255, 0.1);
+            width: 90%;
+            max-width: 400px;
+            text-align: center;
+        }
+
+        .login-box h2 {
+            color: var(--primary-color);
+            margin-top: 0;
+            font-weight: 800;
+            margin-bottom: 25px;
+        }
+
+        /* الزر العائم الجديد لإعدادات التنسيق */
+        .quick-settings-fab {
+            position: fixed;
+            bottom: 30px;
+            left: 30px;
+            z-index: 9990;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: var(--primary-color);
+            color: white;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            border: none;
+            transition: transform 0.2s;
+        }
+
+        .quick-settings-fab:hover {
+            transform: scale(1.1);
+        }
+
+        @media print {
+
+            header,
+            .sticky-toolbar,
+            .editor-tabs,
+            .editor-tab-content,
+            .chords-sidebar,
+            .perf-controls,
+            .theme-toggle,
+            .hide-on-export,
+            .quick-settings-fab,
+            #quickSettingsPanel {
+                display: none !important;
+            }
+
+            body,
+            .container,
+            .editor-workspace {
+                display: block !important;
+                width: 100% !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                overflow: visible !important;
+                background: white !important;
+            }
+
+            .preview-container {
+                background: white !important;
+                color: black !important;
+                box-shadow: none !important;
+                margin: 0 auto !important;
+                border: none !important;
+                padding: 0 !important;
+                width: 800px !important;
+                max-width: 800px !important;
+            }
+
+            .chord {
+                position: absolute !important;
+                top: -1.8em !important;
+                font-weight: bold !important;
+                white-space: nowrap !important;
+                background: transparent !important;
+                transform: translateX(50%) !important;
+                box-shadow: none !important;
+                border: none !important;
+                color: #d63031 !important;
+                padding: 0 !important;
+            }
+
+            .line {
+                position: relative !important;
+                page-break-inside: avoid;
+                display: block !important;
+                width: 100% !important;
+                text-align: right !important;
+                margin-bottom: 2em !important;
+            }
+
+            .section-header {
+                border-bottom: 1px solid #ccc;
+                color: #333;
+            }
+        }
+    </style>
+
+    <!-- تعريف الدوال العامة بطريقة آمنة لضمان عمل الأزرار حتى قبل اكتمال تحميل الصفحة -->
+    <script>
+        window.db = null;
+        window.auth = null;
+        window.currentUser = null;
+        window.unsubscribeSnapshot = null;
+        window.unsubscribeBase = null;
+        window.unsubscribePending = null;
+        window.appId = 'default-app-id';
+        window.activeAccount = null;
+
+        // إعدادات الأدمن
+        const ADMIN_USERNAME = 'karim';
+        window.isAdmin = function () {
+            return window.activeAccount === ADMIN_USERNAME;
+        };
+
+        // دالة حماية لضمان وجود العناصر في الصفحة قبل التعديل عليها
+        window.safeDOM = function (fn) {
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', fn);
+            } else {
+                fn();
+            }
+        };
+
+        window.updateAdminUI = function () {
+            window.safeDOM(() => {
+                const pendingTab = document.getElementById('pendingTabBtn');
+                const btnSaveBase = document.getElementById('btnSaveBase');
+                if (window.isAdmin()) {
+                    if (pendingTab) pendingTab.style.display = 'flex';
+                    if (btnSaveBase) btnSaveBase.style.display = 'flex';
+                } else {
+                    if (pendingTab) pendingTab.style.display = 'none';
+                    if (btnSaveBase) btnSaveBase.style.display = 'none';
+                }
+                if (window.lucide) window.lucide.createIcons();
+            });
+        };
+
+        window.setCloudStatus = function (status) {
+            window.safeDOM(() => {
+                const icon = document.getElementById('cloudIcon');
+                const dashIcon = document.getElementById('dashCloudIcon');
+                const text = document.getElementById('cloudText');
+                const dashText = document.getElementById('dashCloudText');
+
+                if (status === 'connecting') {
+                    if (icon) { icon.setAttribute('data-lucide', 'refresh-cw'); icon.classList.add('spin'); }
+                    if (dashIcon) { dashIcon.setAttribute('data-lucide', 'refresh-cw'); dashIcon.classList.add('spin'); }
+                    if (text) text.innerText = 'جاري الاتصال...';
+                    if (dashText) dashText.innerText = 'جاري الاتصال...';
+                } else if (status === 'connected') {
+                    if (icon) { icon.setAttribute('data-lucide', 'cloud-check'); icon.classList.remove('spin'); }
+                    if (dashIcon) { dashIcon.setAttribute('data-lucide', 'cloud-check'); dashIcon.classList.remove('spin'); }
+                } else if (status === 'error') {
+                    if (icon) { icon.setAttribute('data-lucide', 'cloud-off'); icon.classList.remove('spin'); }
+                    if (dashIcon) { dashIcon.setAttribute('data-lucide', 'cloud-off'); dashIcon.classList.remove('spin'); }
+                }
+                if (window.lucide) window.lucide.createIcons();
+            });
+        };
+
+        window.bypassLogin = function () {
+            window.safeDOM(() => {
+                const overlay = document.getElementById('loginModalOverlay');
+                if (overlay) overlay.style.display = 'none';
+                window.setCloudStatus('error');
+                const txt = document.getElementById('cloudText');
+                if (txt) txt.innerText = 'وضع الضيف (محلي)';
+                window.updateAdminUI();
+            });
+        };
+
+        window.loginCustom = async function (username, password) {
+            window.safeDOM(async () => {
+                const errEl = document.getElementById('loginErrorMsg');
+                const overlay = document.getElementById('loginModalOverlay');
+
+                if (!window.db) {
+                    if (errEl) errEl.innerText = "السحابة غير متاحة حالياً. يرجى الدخول كضيف ⚠️";
+                    if (overlay) overlay.style.display = 'flex';
+                    return;
+                }
+                if (!window.currentUser) {
+                    if (errEl) errEl.innerText = "جاري تأمين الاتصال بالسحابة... يرجى الانتظار ثواني ثم حاول مجدداً ⏳";
+                    if (overlay) overlay.style.display = 'flex';
+                    return;
+                }
+
+                window.setCloudStatus('connecting');
+                if (errEl) errEl.innerText = "جاري تسجيل الدخول...";
+
+                try {
+                    const docRef = window.firebaseDoc(window.db, 'artifacts', window.appId, 'public', 'data', 'taraneem_accounts', username);
+                    const snap = await window.firebaseGetDoc(docRef);
+                    if (snap.exists()) {
+                        if (snap.data().password === password) {
+                            window.finishLoginSetup(username, password);
+                        } else {
+                            if (errEl) errEl.innerText = "كلمة المرور غير صحيحة ❌";
+                            if (overlay) overlay.style.display = 'flex';
+                            window.setCloudStatus('error');
+                        }
+                    } else {
+                        if (errEl) errEl.innerText = "الاسم غير موجود، يمكنك (إنشاء حساب جديد) بهذا الاسم 💡";
+                        if (overlay) overlay.style.display = 'flex';
+                        window.setCloudStatus('error');
+                    }
+                } catch (e) {
+                    console.error(e);
+                    if (errEl) errEl.innerText = "حدث خطأ في الاتصال بالسحابة ⚠️";
+                    if (overlay) overlay.style.display = 'flex';
+                    window.setCloudStatus('error');
+                }
+            });
+        };
+
+        window.signupCustom = async function () {
+            window.safeDOM(async () => {
+                const uInput = document.getElementById('loginUsername').value.trim();
+                const pInput = document.getElementById('loginPassword').value.trim();
+                const errEl = document.getElementById('loginErrorMsg');
+
+                if (!uInput || !pInput) {
+                    if (errEl) errEl.innerText = "يرجى إدخال الاسم وكلمة المرور أولاً ⚠️";
+                    return;
+                }
+                if (!window.db) {
+                    if (errEl) errEl.innerText = "السحابة غير متاحة حالياً. يرجى الدخول كضيف ⚠️";
+                    return;
+                }
+                if (!window.currentUser) {
+                    if (errEl) errEl.innerText = "جاري الاتصال بالسحابة... يرجى الانتظار ثواني ثم المحاولة ⏳";
+                    return;
+                }
+
+                window.setCloudStatus('connecting');
+                if (errEl) errEl.innerText = "جاري إنشاء الحساب...";
+
+                try {
+                    const docRef = window.firebaseDoc(window.db, 'artifacts', window.appId, 'public', 'data', 'taraneem_accounts', uInput);
+                    const snap = await window.firebaseGetDoc(docRef);
+                    if (snap.exists()) {
+                        if (errEl) errEl.innerText = "هذا الاسم مستخدم مسبقاً، يرجى اختيار اسم آخر ❌";
+                        window.setCloudStatus('error');
+                        return;
+                    }
+                    await window.firebaseSetDoc(docRef, {
+                        password: pInput,
+                        dataPayload: JSON.stringify({ library: [], setlists: [] })
+                    });
+                    window.finishLoginSetup(uInput, pInput);
+                } catch (e) {
+                    console.error(e);
+                    if (errEl) errEl.innerText = "حدث خطأ أثناء إنشاء الحساب، تأكد من الاتصال ⚠️";
+                    window.setCloudStatus('error');
+                }
+            });
+        };
+
+        window.submitLogin = function () {
+            window.safeDOM(() => {
+                const uInput = document.getElementById('loginUsername').value.trim();
+                const pInput = document.getElementById('loginPassword').value.trim();
+                const errEl = document.getElementById('loginErrorMsg');
+                if (!uInput || !pInput) {
+                    if (errEl) errEl.innerText = "يرجى إدخال الاسم وكلمة المرور أولاً ⚠️";
+                    return;
+                }
+                window.loginCustom(uInput, pInput);
+            });
+        };
+
+        window.finishLoginSetup = function (username, password) {
+            window.safeDOM(() => {
+                localStorage.setItem('taraneem_username', username);
+                localStorage.setItem('taraneem_password', password);
+                window.activeAccount = username;
+
+                const overlay = document.getElementById('loginModalOverlay');
+                const errEl = document.getElementById('loginErrorMsg');
+                const cloudTxt = document.getElementById('cloudText');
+
+                if (overlay) overlay.style.display = 'none';
+                if (errEl) errEl.innerText = "";
+                window.setCloudStatus('connected');
+                const dashText = document.getElementById('dashCloudText');
+                if (cloudTxt) cloudTxt.innerText = `مكتبة ${username}`;
+                if (dashText) dashText.innerText = `مكتبة ${username}`;
+
+                window.updateAdminUI();
+
+                // 1. مزامنة المكتبة الخاصة
+                if (window.unsubscribeSnapshot) window.unsubscribeSnapshot();
+                const docRef = window.firebaseDoc(window.db, 'artifacts', window.appId, 'public', 'data', 'taraneem_accounts', username);
+                window.unsubscribeSnapshot = window.firebaseOnSnapshot(docRef, (docSnap) => {
+                    if (docSnap.exists()) {
+                        const payloadStr = docSnap.data().dataPayload;
+                        if (payloadStr) {
+                            try {
+                                const payload = JSON.parse(payloadStr);
+                                window.state.library = payload.library || [];
+                                window.state.setlists = payload.setlists || [];
+                                if (window.renderLibraryList) window.renderLibraryList();
+                                if (window.renderSetlists) window.renderSetlists();
+                            } catch (e) { }
+                        }
+                    }
+                });
+
+                // 2. مزامنة المكتبة الأساسية للجميع
+                if (window.unsubscribeBase) window.unsubscribeBase();
+                const baseRef = window.firebaseDoc(window.db, 'artifacts', window.appId, 'public', 'data', 'taraneem_global', 'base_library');
+                window.unsubscribeBase = window.firebaseOnSnapshot(baseRef, (docSnap) => {
+                    if (docSnap.exists()) {
+                        try {
+                            window.state.baseLibrary = JSON.parse(docSnap.data().dataPayload || '[]');
+                            if (window.renderBaseLibrary) window.renderBaseLibrary();
+                        } catch (e) { }
+                    }
+                });
+
+                // 3. مزامنة طلبات الإضافة (للأدمن فقط) والتنبيه
+                if (window.unsubscribePending) window.unsubscribePending();
+                if (window.isAdmin()) {
+                    const pendingRef = window.firebaseDoc(window.db, 'artifacts', window.appId, 'public', 'data', 'taraneem_global', 'pending_requests');
+                    window.unsubscribePending = window.firebaseOnSnapshot(pendingRef, (docSnap) => {
+                        if (docSnap.exists()) {
+                            try {
+                                window.state.pendingRequests = JSON.parse(docSnap.data().dataPayload || '[]');
+                                if (window.renderPendingRequests) window.renderPendingRequests();
+
+                                // تحديث الشارة (Badge) للتنبيه
+                                const count = window.state.pendingRequests.length;
+                                const badge = document.getElementById('pendingBadge');
+                                if (badge) {
+                                    badge.style.display = count > 0 ? 'inline-block' : 'none';
+                                    badge.innerText = count;
+                                }
+                            } catch (e) { }
+                        }
+                    });
+                }
+
+                // Call shared URL parser exactly after a successful login flow completes
+                if (window.checkSharedUrl) window.checkSharedUrl();
+
+            });
+        };
+
+        window.logoutCustom = function () {
+            window.safeDOM(() => {
+                localStorage.removeItem('taraneem_username');
+                localStorage.removeItem('taraneem_password');
+                window.activeAccount = null;
+                if (window.unsubscribeSnapshot) window.unsubscribeSnapshot();
+                if (window.unsubscribeBase) window.unsubscribeBase();
+                if (window.unsubscribePending) window.unsubscribePending();
+
+                window.state.library = [];
+                window.state.setlists = [];
+                window.state.baseLibrary = [];
+                window.state.pendingRequests = [];
+                window.state.editingMode = 'private';
+
+                if (window.renderLibraryList) window.renderLibraryList();
+                if (window.renderSetlists) window.renderSetlists();
+
+                document.getElementById('loginUsername').value = '';
+                document.getElementById('loginPassword').value = '';
+
+                const errEl = document.getElementById('loginErrorMsg');
+                const overlay = document.getElementById('loginModalOverlay');
+                const cloudTxt = document.getElementById('cloudText');
+
+                if (errEl) errEl.innerText = 'تم تسجيل الخروج بنجاح ✔️';
+                if (overlay) overlay.style.display = 'flex';
+                window.setCloudStatus('error');
+                const dashText = document.getElementById('dashCloudText');
+                if (cloudTxt) cloudTxt.innerText = 'يرجى تسجيل الدخول';
+                if (dashText) dashText.innerText = 'تسجيل الدخول';
+
+                const badge = document.getElementById('pendingBadge');
+                if (badge) badge.style.display = 'none';
+
+                window.updateAdminUI();
+            });
+        };
+
+        window.syncCloudData = async function () {
+            if (!window.activeAccount || !window.currentUser || !window.db) return false;
+            if (window.showSaveStatus) window.showSaveStatus("جاري الحفظ في السحابة... ☁️");
+            const docRef = window.firebaseDoc(window.db, 'artifacts', window.appId, 'public', 'data', 'taraneem_accounts', window.activeAccount);
+            const payload = JSON.stringify({ library: window.state.library, setlists: window.state.setlists });
+            try {
+                await window.firebaseSetDoc(docRef, { dataPayload: payload }, { merge: true });
+                if (window.showSaveStatus) window.showSaveStatus("تم الحفظ في مكتبتك بنجاح! ☁️");
+                return true;
+            } catch (e) {
+                console.error(e);
+                if (window.showSaveStatus) window.showSaveStatus("خطأ في الاتصال بالسحابة.");
+                return false;
+            }
+        };
+
+        window.syncBaseLibrary = async function () {
+            if (!window.currentUser || !window.db || !window.isAdmin()) return false;
+            const docRef = window.firebaseDoc(window.db, 'artifacts', window.appId, 'public', 'data', 'taraneem_global', 'base_library');
+            try { await window.firebaseSetDoc(docRef, { dataPayload: JSON.stringify(window.state.baseLibrary) }, { merge: true }); return true; }
+            catch (e) { return false; }
+        };
+
+        window.syncPendingRequests = async function () {
+            if (!window.currentUser || !window.db) return false;
+            const docRef = window.firebaseDoc(window.db, 'artifacts', window.appId, 'public', 'data', 'taraneem_global', 'pending_requests');
+            try { await window.firebaseSetDoc(docRef, { dataPayload: JSON.stringify(window.state.pendingRequests) }, { merge: true }); return true; }
+            catch (e) { return false; }
+        };
+
+        // --- دوال الانتقال بين المحرر والداشبورد ---
+        window.showDashboard = function () {
+            document.getElementById('editorView').style.display = 'none';
+            document.getElementById('dashboardView').style.display = 'block';
+            if (window.renderLibraryList) window.renderLibraryList();
+            if (window.renderBaseLibrary) window.renderBaseLibrary();
+            if (window.renderSetlists) window.renderSetlists();
+            if (window.renderPendingRequests && window.isAdmin()) window.renderPendingRequests();
+            window.scrollTo(0, 0);
+        };
+
+        window.showEditor = function () {
+            document.getElementById('dashboardView').style.display = 'none';
+            document.getElementById('editorView').style.display = 'block';
+            window.scrollTo(0, 0);
+        };
+
+        // --- وظائف المكتبة الأساسية وطلبات الإضافة ---
+
+        window.proposeSong = async function (id) {
+            if (!window.activeAccount) return alert('يجب تسجيل الدخول أولاً');
+            const song = window.state.library.find(s => s.id === id);
+            if (!song) return;
+
+            const alreadyProposed = window.state.pendingRequests.find(p => p.originalId === id && p.proposedBy === window.activeAccount);
+            if (alreadyProposed) return window.showSaveStatus("لقد قمت باقتراح هذه الترنيمة مسبقاً ⏳");
+
+            const proposal = JSON.parse(JSON.stringify(song));
+            proposal.proposalId = window.generateId();
+            proposal.originalId = song.id;
+            proposal.proposedBy = window.activeAccount;
+
+            window.state.pendingRequests.push(proposal);
+            await window.syncPendingRequests();
+            window.showSaveStatus("تم إرسال الترنيمة للمراجعة من الإدارة بنجاح! 🌟");
+        };
+
+        window.cloneToPrivate = async function (id) {
+            const song = window.state.baseLibrary.find(s => s.id === id);
+            if (!song) return;
+            const newSong = JSON.parse(JSON.stringify(song));
+            newSong.id = window.generateId();
+            window.state.library.push(newSong);
+            await window.syncCloudData();
+            window.showSaveStatus("تم أخذ نسخة بنجاح، تجدها الآن في (مكتبتي) 📝");
+        };
+
+        window.acceptProposal = async function (proposalId) {
+            if (!window.isAdmin()) return;
+            const propIdx = window.state.pendingRequests.findIndex(p => p.proposalId === proposalId);
+            if (propIdx === -1) return;
+
+            const baseSong = JSON.parse(JSON.stringify(window.state.pendingRequests[propIdx]));
+            baseSong.id = window.generateId();
+            delete baseSong.proposalId;
+            delete baseSong.originalId;
+            delete baseSong.proposedBy;
+
+            window.state.baseLibrary.push(baseSong);
+            window.state.pendingRequests.splice(propIdx, 1);
+
+            await window.syncBaseLibrary();
+            await window.syncPendingRequests();
+            if (window.renderPendingRequests) window.renderPendingRequests();
+            if (window.renderBaseLibrary) window.renderBaseLibrary();
+            window.showSaveStatus("تم قبول الترنيمة وإضافتها للمكتبة الأساسية ✔️");
+        };
+
+        window.rejectProposal = async function (proposalId) {
+            if (!window.isAdmin()) return;
+            window.state.pendingRequests = window.state.pendingRequests.filter(p => p.proposalId !== proposalId);
+            await window.syncPendingRequests();
+            if (window.renderPendingRequests) window.renderPendingRequests();
+            window.showSaveStatus("تم رفض وحذف الطلب ❌");
+        };
+
+        window.deleteFromBase = async function (id) {
+            if (!window.isAdmin() || !confirm("هل أنت متأكد من حذف هذه الترنيمة من المكتبة الأساسية للجميع؟")) return;
+            window.state.baseLibrary = window.state.baseLibrary.filter(s => s.id !== id);
+            await window.syncBaseLibrary();
+            if (window.renderBaseLibrary) window.renderBaseLibrary();
+            window.showSaveStatus("تم الحذف من الأساسية 🗑️");
+        };
+
+        window.loadFromBaseForEdit = function (id) {
+            if (!window.isAdmin()) return;
+            const song = window.state.baseLibrary.find(s => s.id === id);
+            if (!song) return;
+            window.showEditor();
+            if (window.applyAutosaveData) window.applyAutosaveData(song);
+            window.state.editingMode = 'base';
+            window.state.history = [];
+            window.closeLibraryModal();
+        };
+
+        window.handleKeyInput = function () {
+            window.handleStateChange();
+            const k = document.getElementById("key");
+            if (k) window.state.originalKey = k.value;
+            if (window.updateSuggestedChords) window.updateSuggestedChords();
+            if (window.updatePreviewKey) window.updatePreviewKey();
+        }
+    </script>
+
+    <!-- سكربت المزامنة السحابية -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInWithCustomToken, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, getDoc, onSnapshot, enableIndexedDbPersistence } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        window.firebaseDoc = doc;
+        window.firebaseSetDoc = setDoc;
+        window.firebaseGetDoc = getDoc;
+        window.firebaseOnSnapshot = onSnapshot;
+
+        try {
+            let configStr = typeof __firebase_config !== 'undefined' ? __firebase_config : null;
+            let firebaseConfig = {};
+
+            if (configStr) {
+                firebaseConfig = typeof configStr === 'string' ? JSON.parse(configStr) : configStr;
+                window.appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+            } else {
+                firebaseConfig = {
+                    apiKey: "AIzaSyDO_Eo8heAL0JqVVPkk71iWrcuuDK9Cydc",
+                    authDomain: "taraneem-editor-pro.firebaseapp.com",
+                    projectId: "taraneem-editor-pro",
+                    storageBucket: "taraneem-editor-pro.firebasestorage.app",
+                    messagingSenderId: "337828804127",
+                    appId: "1:337828804127:web:210ceeac2855e91f50072a"
+                };
+                window.appId = 'my-custom-taraneem-app';
+            }
+
+            if (Object.keys(firebaseConfig).length > 0 && firebaseConfig.apiKey) {
+                const app = initializeApp(firebaseConfig);
+                window.auth = getAuth(app);
+                window.db = getFirestore(app);
+
+                // Enable offline caching / PWA persistence
+                enableIndexedDbPersistence(window.db).catch((err) => {
+                    if (err.code == 'failed-precondition') {
+                        console.warn('Multiple tabs open, offline persistence can only be enabled in one tab at a time.');
+                    } else if (err.code == 'unimplemented') {
+                        console.warn('The current browser does not support all of the features required to enable persistence');
+                    }
+                });
+
+                const initAuth = async () => {
+                    window.setCloudStatus('connecting');
+                    try {
+                        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                            await signInWithCustomToken(window.auth, __initial_auth_token);
+                        } else {
+                            await signInAnonymously(window.auth);
+                        }
+                    } catch (error) {
+                        console.error('Auth Error:', error);
+                        window.setCloudStatus('error');
+                        window.safeDOM(() => {
+                            const errEl = document.getElementById('loginErrorMsg');
+                            if (errEl) errEl.innerText = "حدث خطأ أثناء الاتصال بالخادم، يرجى الدخول كضيف ⚠️";
+                        });
+                    }
+                };
+                initAuth();
+
+                onAuthStateChanged(window.auth, (user) => {
+                    if (user) {
+                        window.currentUser = user;
+                        window.safeDOM(() => {
+                            const savedUser = localStorage.getItem('taraneem_username');
+                            const savedPass = localStorage.getItem('taraneem_password');
+                            if (savedUser && savedPass) {
+                                window.loginCustom(savedUser, savedPass);
+                            }
+                        });
+                    } else {
+                        window.currentUser = null;
+                    }
+                });
+            }
+        } catch (e) {
+            console.error("Firebase config loading ignored/failed safely:", e);
+        }
+    </script>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#6c5ce7">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="TaraneemPro">
+    <link rel="apple-touch-icon" href="icon-192.png">
+</head>
+
+<body>
+
+    <div id="saveStatus"><i data-lucide="check-circle"></i> تم الحفظ بنجاح</div>
+
+    <div id="dashboardView" class="container" style="display: block;">
+        <div style="text-align: center; margin-bottom: 15px; padding-top: 10px;">
+            <h1
+                style="margin: 0; color: var(--primary-color); font-size: 2.2rem; font-weight: 900; letter-spacing: 1px;">
+                Taraneem Editor Pro
+                <span id="offlineIndicator"
+                    style="display: none; vertical-align: middle; margin-right: 10px; font-size: 0.9rem; padding: 4px 12px; border-radius: 20px; background: #ff4757; color: white; font-weight: normal; box-shadow: 0 2px 4px rgba(255,71,87,0.4);"
+                    title="أنت تعمل الآن بدون إنترنت (سيتم المزامنة تلقائياً عند العودة)"><i data-lucide="wifi-off"
+                        style="width: 14px; height: 14px; margin-left: 4px;"></i> غير متصل</span>
+            </h1>
+        </div>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <h2
+                style="margin: 0; color: var(--primary-color); font-size: 1.4rem; font-weight: 800; display: flex; align-items: center; gap: 10px;">
+                <i data-lucide="library"></i> مكتبة الترانيم
+            </h2>
+            <div style="display: flex; gap: 10px;">
+                <div id="dashCloudStatus"
+                    style="display: flex; align-items: center; gap: 8px; padding: 0 15px; border-radius: 50px; background: var(--bg-color); color: var(--primary-color); font-size: 0.85rem; font-weight: bold; box-shadow: inset 3px 3px 6px var(--shadow-dark), inset -3px -3px 6px var(--shadow-light); cursor: pointer;"
+                    onclick="document.getElementById('loginModalOverlay').style.display='flex'">
+                    <i id="dashCloudIcon" data-lucide="cloud" style="width: 18px;"></i>
+                    <span id="dashCloudText">تسجيل الدخول</span>
+                </div>
+                <button id="dashbtnLogout" class="btn-danger"
+                    style="display: none; border-radius: 50px; padding: 0 15px; font-weight: bold; box-shadow: inset 3px 3px 6px var(--shadow-dark), inset -3px -3px 6px var(--shadow-light);"
+                    onclick="logoutCustom()" title="تسجيل الخروج">
+                    <i data-lucide="log-out" style="width: 18px;"></i> <!-- Logout -->
+                </button>
+                <button class="theme-toggle" onclick="toggleDarkMode()" title="تبديل الوضع الليلي">
+                    <i data-lucide="moon"></i>
+                </button>
+            </div>
+        </div>
+
+        <div style="display: flex; gap: 10px; margin-bottom: 25px;">
+            <button class="btn-solid-primary"
+                style="flex: 1; padding: 15px; font-size: 1.1rem; border-radius: 16px; box-shadow: 0 4px 15px rgba(108, 92, 231, 0.3);"
+                onclick="clearInputs()"><i data-lucide="plus-circle"></i> إنشاء ترنيمة جديدة</button>
+            <button class="btn-solid-primary"
+                style="flex: 1; padding: 15px; font-size: 1.1rem; border-radius: 16px; box-shadow: 0 4px 15px rgba(108, 92, 231, 0.3); background: var(--bg-color); color: var(--primary-color); border: 2px solid var(--primary-color);"
+                onclick="window.showEditor()"><i data-lucide="edit-3"></i> فتح المحرر (متابعة التعديل)</button>
+        </div>
+
+        <div id="dashboardTabsContainer">
+            <div class="tabs">
+                <button class="tab-btn active" onclick="switchModalTab('baseLibraryTab')"><i
+                        data-lucide="book-open"></i> المكتبة الأساسية</button>
+                <button class="tab-btn" onclick="switchModalTab('setlistsTab')"><i data-lucide="list-music"></i> قوائم
+                    الخدمة</button>
+                <button class="tab-btn" onclick="switchModalTab('songsTab')"><i data-lucide="music"></i> مكتبتي
+                    الخاصة</button>
+                <button id="pendingTabBtn" class="tab-btn" style="display:none;"
+                    onclick="switchModalTab('pendingTab')"><i data-lucide="bell"></i> طلبات الإضافة <span
+                        id="pendingBadge"
+                        style="display:none; margin-right: 5px; background: #ff4757; color: white; width: 20px; height: 20px; line-height: 20px; text-align: center; border-radius: 50%; font-size: 0.75rem; font-weight: bold; box-shadow: 0 2px 4px rgba(255,71,87,0.4);">0</span></button>
+            </div>
+
+            <!-- تبويب المكتبة الأساسية (الافتراضي) -->
+            <div id="baseLibraryTab" class="tab-content active">
+                <div style="position: relative; margin-bottom: 20px;">
+                    <i data-lucide="search" style="position: absolute; right: 15px; top: 15px; color: #a0a0a0;"></i>
+                    <input type="text" id="searchBaseLibrary" placeholder="ابحث في الترانيم الرسمية المعتمدة..."
+                        style="padding-right: 45px; border-radius: 50px;" oninput="window.renderBaseLibrary()">
+                </div>
+                <div id="baseLibraryList" style="overflow-y: auto; padding-right: 5px;"></div>
+            </div>
+
+            <!-- تبويب قوائم الخدمة -->
+            <div id="setlistsTab" class="tab-content">
+                <div
+                    style="display: flex; gap: 10px; margin-bottom: 25px; background: var(--surface-color); padding: 15px; border-radius: 16px;">
+                    <input type="text" id="newSetlistName" placeholder="اسم قائمة الخدمة (مثال: اجتماع الأحد)"
+                        style="flex: 1; border-radius: 50px;">
+                    <button class="btn-solid-primary" onclick="createNewSetlist()"><i data-lucide="plus"></i> إنشاء
+                        قائمة</button>
+                </div>
+                <div id="setlistsList" style="overflow-y: auto; padding-right: 5px;"></div>
+            </div>
+
+            <!-- تبويب مكتبتي الخاصة -->
+            <div id="songsTab" class="tab-content">
+                <div style="display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap;">
+                    <div style="position: relative; flex: 1; min-width: 250px;">
+                        <i data-lucide="search" style="position: absolute; right: 15px; top: 15px; color: #a0a0a0;"></i>
+                        <input type="text" id="searchLibrary" placeholder="ابحث في مكتبتك الخاصة..."
+                            style="padding-right: 45px; border-radius: 50px;" oninput="window.renderLibraryList()">
+                    </div>
+                    <button class="btn-success" style="border-radius: 50px; padding: 10px 20px;"
+                        onclick="exportLibraryToFile()">
+                        <i data-lucide="download"></i> تصدير نسخة (Backup)
+                    </button>
+                    <button class="btn-warning" style="border-radius: 50px; padding: 10px 20px;"
+                        onclick="document.getElementById('importBackupInput').click()">
+                        <i data-lucide="upload"></i> استرداد نسخة
+                    </button>
+                    <input type="file" id="importBackupInput" accept=".json" style="display: none;"
+                        onchange="importLibraryFromFile(event)">
+                </div>
+                <div id="libraryList" style="overflow-y: auto; padding-right: 5px;"></div>
+            </div>
+
+            <!-- تبويب طلبات الإضافة (للأدمن) -->
+            <div id="pendingTab" class="tab-content">
+                <p style="color:#636e72; margin-bottom: 15px;">الترانيم المقترحة من المستخدمين في انتظار مراجعتك
+                    واعتمادك:</p>
+                <div id="pendingList" style="overflow-y: auto; padding-right: 5px;"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="editorView" style="display: none; padding-bottom: 60px;">
+        <div class="container" style="padding-top: 5px;">
+
+            <!-- الشريط الثابت العلوي للمهام السريعة -->
+            <div class="sticky-toolbar">
+                <div class="toolbar-group">
+                    <button class="btn-icon"
+                        style="padding: 6px 15px; display: flex; align-items: center; gap: 6px; font-weight: bold; font-family: 'Cairo', sans-serif; background: var(--bg-color); border-radius: 50px; box-shadow: inset 3px 3px 6px var(--shadow-dark), inset -3px -3px 6px var(--shadow-light); color: var(--text-color);"
+                        onclick="window.showDashboard()" title="عودة للمكتبة">
+                        <i data-lucide="arrow-right"></i> (المكتبة)
+                    </button>
+                    <button class="theme-toggle" onclick="toggleDarkMode()" title="تبديل الوضع الليلي">
+                        <i data-lucide="moon"></i>
+                    </button>
+                    <div style="display: flex; align-items: center; gap: 6px; padding: 6px 15px; border-radius: 50px; background: var(--bg-color); color: var(--primary-color); font-size: 0.85rem; font-weight: bold; box-shadow: inset 3px 3px 6px var(--shadow-dark), inset -3px -3px 6px var(--shadow-light);"
+                        title="حالة الحفظ السحابي الآمن">
+                        <i data-lucide="cloud-off" id="cloudIcon" style="width: 16px;"></i>
+                        <span id="cloudText">تهيئة السحابة...</span>
+                        <button class="btn-icon"
+                            style="padding: 4px; margin-right: 5px; box-shadow: none; color: #ff7675; background: transparent;"
+                            onclick="logoutCustom()" title="تسجيل الخروج والتبديل"><i data-lucide="log-out"
+                                style="width: 16px;"></i></button>
+                    </div>
+                    <h2 style="margin:0; font-size:1.2rem; color:var(--primary-color); font-weight:800; display:none;"
+                        id="toolbarTitle">Taraneem Pro</h2>
+                </div>
+
+                <div class="toolbar-group">
+                    <button class="btn-primary" onclick="clearInputs()" title="بدء ترنيمة جديدة"><i
+                            data-lucide="file-plus"></i> <span class="hide-mobile">جديد</span></button>
+                    <button class="btn-primary" onclick="undo()" title="تراجع خطوة"><i data-lucide="undo"></i> <span
+                            class="hide-mobile">تراجع</span></button>
+
+                    <!-- زر الحفظ في المكتبة الخاصة موحد اللون -->
+                    <button class="btn-primary" onclick="saveToLibrary()"><i data-lucide="save"></i> <span
+                            class="hide-mobile">حفظ</span></button>
+
+                    <!-- زر الحفظ في المكتبة الأساسية (يظهر للأدمن فقط) بلون أحمر غامق -->
+                    <button id="btnSaveBase" class="btn-primary" style="display:none;" onclick="saveToBaseLibrary()"><i
+                            data-lucide="shield-check" style="color: #8b0000;"></i> <span class="hide-mobile"
+                            style="color: #8b0000;">الأساسية</span></button>
+
+                    <!-- Library button removed -->
+                    <div style="width: 2px; height: 20px; background: var(--shadow-dark); margin: 0 5px;"></div>
+                    <button id="btnToggleEditMode" class="btn-edit-mode" onclick="toggleEditMode()"
+                        title="تفعيل/إلغاء وضع إضافة الكوردات"><i data-lucide="edit-3"></i> <span
+                            class="hide-mobile">إضافة
+                            كوردات</span></button>
+                    <div style="width: 2px; height: 20px; background: var(--shadow-dark); margin: 0 5px;"></div>
+                    <button class="btn-warning" style="color: #d35400;" onclick="togglePerformanceMode(true)"><i
+                            data-lucide="play-circle"></i> <b>وضع العزف</b></button>
+                </div>
+            </div>
+
+            <header>
+                <h1>Taraneem Editor Pro</h1>
+                <div class="subtitle">المحرّر الاحترافي لقادة التسبيح والعازفين</div>
+            </header>
+
+            <!-- التبويبات لفصل الإدخال عن التنسيق -->
+            <div class="editor-tabs">
+                <div class="editor-tab-btn active" onclick="switchEditorTab('tab-write')">
+                    <i data-lucide="pen-tool"></i> كتابة الترنيمة
+                </div>
+                <div class="editor-tab-btn" onclick="switchEditorTab('tab-style')">
+                    <i data-lucide="sliders"></i> العرض والتنسيق
+                </div>
+            </div>
+
+            <div id="tab-write" class="editor-tab-content active">
+                <div class="control-panel" style="grid-template-columns: 1fr 1fr 1fr;">
+                    <div class="input-group">
+                        <label><i data-lucide="type"></i> عنوان الترنيمة</label>
+                        <input id="title" placeholder="أدخل العنوان..."
+                            oninput="handleStateChange(); updatePreviewTitle()">
+                    </div>
+                    <div class="input-group">
+                        <label><i data-lucide="music"></i> السلم (Key)</label>
+                        <input id="key" placeholder="C, G, Dm..."
+                            style="direction: ltr; text-align: right; font-weight: bold;" oninput="handleKeyInput()">
+                    </div>
+                    <div class="input-group">
+                        <label><i data-lucide="activity"></i> السرعة (Tempo)</label>
+                        <input id="tempo" type="number" placeholder="BPM"
+                            style="direction: ltr; text-align: right; font-weight: bold;"
+                            oninput="handleStateChange(); updatePreviewKey()">
+                    </div>
+
+                    <div class="input-group" style="grid-column: 1 / -1;">
+                        <label><i data-lucide="align-right"></i> الكلمات</label>
+                        <textarea id="lyrics" placeholder="أدخل كلمات الترنيمة هنا... استخدم علامة # للمقاطع"
+                            oninput="handleLyricsInput()"></textarea>
+
+                        <div
+                            style="display: flex; gap: 10px; align-items: center; margin-top: 10px; background: var(--surface-color); padding: 12px 15px; border-radius: 12px; box-shadow: inset 3px 3px 6px var(--shadow-dark), inset -3px -3px 6px var(--shadow-light); flex-wrap: wrap;">
+                            <span
+                                style="font-size: 0.9rem; font-weight: bold; color: var(--primary-color); white-space: nowrap;"><i
+                                    data-lucide="layers" style="width: 16px; vertical-align: middle;"></i>
+                                الأقسام:</span>
+
+                            <select id="newSectionType"
+                                style="padding: 8px; width: auto; flex: unset; box-shadow: none; background: var(--bg-color); border: 1px solid var(--shadow-dark);"
+                                onchange="handleNewSectionChange()">
+                                <option value="القرار">القرار</option>
+                                <option value="بيت 1">بيت 1</option>
+                                <option value="بيت 2">بيت 2</option>
+                                <option value="بيت 3">بيت 3</option>
+                                <option value="بريدج">بريدج (Bridge)</option>
+                                <option value="انترو">انترو (Intro)</option>
+                                <option value="custom">مخصص (اكتب بنفسك)...</option>
+                            </select>
+                            <input type="text" id="customSectionName" placeholder="اكتب اسم القسم..."
+                                style="display:none; padding: 8px; width: 150px; box-shadow: none; background: var(--bg-color); border: 1px solid var(--shadow-dark);">
+                            <button class="btn-primary"
+                                style="padding: 8px 15px; box-shadow: none; background: var(--bg-color); border: 1px solid var(--shadow-dark);"
+                                onclick="insertSectionHeader()" title="إضافة القسم في مربع النص"><i
+                                    data-lucide="plus"></i>
+                                إدراج عنوان</button>
+
+                            <div style="flex: 1; min-width: 10px;"></div>
+
+                            <button id="pasteSectionBtn" class="btn-solid-primary"
+                                style="padding: 8px 15px; display: none;" onclick="pasteCopiedSection()"><i
+                                    data-lucide="clipboard-paste"></i> لصق القسم المنسوخ
+                                هنا</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="tab-style" class="editor-tab-content">
+                <div class="control-panel">
+                    <div class="input-group">
+                        <label><i data-lucide="heading-1"></i> حجم خط العنوان</label>
+                        <div class="range-control">
+                            <i data-lucide="a-small" style="opacity: 0.5;"></i>
+                            <input type="range" id="headerFontSizeRange" min="20" max="60" value="36"
+                                oninput="updateStyles()">
+                            <i data-lucide="a-large" style="opacity: 0.5;"></i>
+                            <span class="range-val" id="headerFontSizeVal">36</span>
+                        </div>
+                    </div>
+                    <div class="input-group">
+                        <label><i data-lucide="type"></i> حجم خط الكلمات</label>
+                        <div class="range-control">
+                            <i data-lucide="a-small" style="opacity: 0.5;"></i>
+                            <input type="range" id="fontSizeRange" min="16" max="50" value="24"
+                                oninput="updateStyles()">
+                            <i data-lucide="a-large" style="opacity: 0.5;"></i>
+                            <span class="range-val" id="fontSizeVal">24</span>
+                        </div>
+                    </div>
+                    <div class="input-group">
+                        <label><i data-lucide="music-4"></i> حجم الكوردات</label>
+                        <div class="range-control">
+                            <i data-lucide="a-small" style="opacity: 0.5;"></i>
+                            <input type="range" id="chordSizeRange" min="12" max="36" value="16"
+                                oninput="updateStyles()">
+                            <i data-lucide="a-large" style="opacity: 0.5;"></i>
+                            <span class="range-val" id="chordSizeVal">16</span>
+                        </div>
+                    </div>
+                    <div class="input-group">
+                        <label><i data-lucide="move-vertical"></i> المسافة بين السطور</label>
+                        <div class="range-control">
+                            <i data-lucide="minimize-2" style="opacity: 0.5;"></i>
+                            <input type="range" id="lineSpacingRange" min="1" max="4" step="0.1" value="1.6"
+                                oninput="updateStyles()">
+                            <i data-lucide="maximize-2" style="opacity: 0.5;"></i>
+                            <span class="range-val" id="lineSpacingVal">1.6</span>
+                        </div>
+                    </div>
+                    <!-- أداة تحكم حجم اللوجو الجديدة -->
+                    <div class="input-group">
+                        <label><i data-lucide="image"></i> حجم اللوجو</label>
+                        <div class="range-control">
+                            <i data-lucide="minimize" style="opacity: 0.5;"></i>
+                            <input type="range" id="logoSizeRange" min="50" max="300" value="180"
+                                oninput="updateStyles()">
+                            <i data-lucide="maximize" style="opacity: 0.5;"></i>
+                            <span class="range-val" id="logoSizeVal">180</span>
+                        </div>
+                    </div>
+
+                    <div class="input-group">
+                        <label><i data-lucide="upload-cloud"></i> إدراج اللوجو</label>
+                        <button class="btn-primary" style="padding: 15px;"
+                            onclick="document.getElementById('logoInput').click()">
+                            <i data-lucide="upload-cloud"></i> رفع صورة اللوجو
+                        </button>
+                        <input type="file" id="logoInput" accept="image/*" onchange="handleLogoUpload(event)">
+                        <span id="logoName"
+                            style="font-size: 0.8em; color: var(--primary-color); text-align: center; margin-top: 5px;"></span>
+                    </div>
+                    <div class="input-group"
+                        style="grid-column: 1 / -1; display: flex; flex-direction: row; justify-content: center; gap: 15px; margin-top: 10px;">
+                        <button class="btn-primary" onclick="exportAsPDF()"><i data-lucide="file-text"></i> تصدير
+                            PDF</button>
+                        <button class="btn-success" onclick="exportAsImage()"><i data-lucide="image"></i> حفظ
+                            كصورة</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="editor-workspace">
+                <div class="preview-container" id="captureArea">
+                    <div id="previewContent">
+                        <div class="empty-state" id="emptyStateMsg">
+                            <i data-lucide="file-music"></i>
+                            <h3>مساحة العمل فارغة</h3>
+                            <p>ابدأ بكتابة العنوان والكلمات في الأعلى لتظهر لك المعاينة هنا، ثم قم بتفعيل "إضافة كوردات"
+                                من
+                                الأعلى للبدء.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="chords-sidebar">
+                    <div class="sidebar-section">
+                        <div class="sidebar-title"><i data-lucide="arrow-up-down"></i> تغيير الطبقة (Transpose)</div>
+                        <div class="transpose-controls">
+                            <button class="transpose-btn" onclick="transposeAll(-1)" title="خفض نصف تون"><i
+                                    data-lucide="minus"></i></button>
+                            <span
+                                style="font-weight: 800; color: var(--primary-color); font-family: sans-serif; align-self: center;">Key</span>
+                            <button class="transpose-btn" onclick="transposeAll(1)" title="رفع نصف تون"><i
+                                    data-lucide="plus"></i></button>
+                        </div>
+                    </div>
+
+                    <div class="sidebar-section">
+                        <div class="sidebar-title"><i data-lucide="guitar"></i> الكوردات المقترحة</div>
+                        <p style="font-size: 0.8rem; color: #7f8c8d; margin-top: -10px; margin-bottom: 10px;">انقر
+                            لاختيار
+                            كورد، ثم انقر على الكلمة لإضافته. (للحذف: انقر مرتين متتاليتين أو كليك يمين)</p>
+                        <div id="suggestedChords" class="chord-grid"></div>
+                    </div>
+
+                    <div class="sidebar-section">
+                        <div class="sidebar-title"><i data-lucide="plus-circle"></i> كورد مخصص</div>
+                        <input id="newChord" class="custom-chord-input" placeholder="مثال: F#m7b5">
+                        <button class="btn-primary" style="width: 100%; justify-content: center; padding: 12px;"
+                            onclick="addNewChord()">إضافة للقائمة</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- الزر العائم للإعدادات السريعة -->
+        <button class="quick-settings-fab hide-on-export" onclick="toggleQuickSettings(event)"
+            title="إعدادات التنسيق السريعة">
+            <i data-lucide="settings"></i>
+        </button>
+
+        <!-- لوحة الإعدادات السريعة العائمة -->
+        <div id="quickSettingsPanel" class="hide-on-export"
+            style="display: none; position: fixed; bottom: 100px; left: 30px; width: 250px; z-index: 9999; background: var(--surface-color); padding: 20px; border-radius: var(--border-radius); box-shadow: 10px 10px 30px rgba(0,0,0,0.15); border: 1px solid rgba(0,0,0,0.05); direction: rtl;">
+            <div
+                style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 2px dashed var(--bg-color); padding-bottom: 10px;">
+                <strong
+                    style="color: var(--primary-color); font-size: 1rem; display: flex; align-items: center; gap: 5px;"><i
+                        data-lucide="sliders" style="width: 16px;"></i> تنسيق سريع</strong>
+                <button class="btn-icon"
+                    style="padding: 4px; box-shadow: inset 2px 2px 5px var(--shadow-dark), inset -2px -2px 5px var(--shadow-light);"
+                    onclick="toggleQuickSettings(event)"><i data-lucide="x" style="width: 14px;"></i></button>
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 12px;">
+                <div>
+                    <label
+                        style="font-size: 0.8rem; font-weight: 700; color: var(--text-color); margin-bottom: 4px; display: block;">حجم
+                        العنوان</label>
+                    <div class="range-control" style="padding: 6px 10px;">
+                        <input type="range" id="quickHeaderFontSizeRange" min="20" max="60" value="36"
+                            oninput="updateStyles('quick')">
+                        <span class="range-val" id="quickHeaderFontSizeVal" style="font-size: 0.8rem;">36</span>
+                    </div>
+                </div>
+                <div>
+                    <label
+                        style="font-size: 0.8rem; font-weight: 700; color: var(--text-color); margin-bottom: 4px; display: block;">حجم
+                        الكلمات</label>
+                    <div class="range-control" style="padding: 6px 10px;">
+                        <input type="range" id="quickFontSizeRange" min="16" max="50" value="24"
+                            oninput="updateStyles('quick')">
+                        <span class="range-val" id="quickFontSizeVal" style="font-size: 0.8rem;">24</span>
+                    </div>
+                </div>
+                <div>
+                    <label
+                        style="font-size: 0.8rem; font-weight: 700; color: var(--text-color); margin-bottom: 4px; display: block;">حجم
+                        الكوردات</label>
+                    <div class="range-control" style="padding: 6px 10px;">
+                        <input type="range" id="quickChordSizeRange" min="12" max="36" value="16"
+                            oninput="updateStyles('quick')">
+                        <span class="range-val" id="quickChordSizeVal" style="font-size: 0.8rem;">16</span>
+                    </div>
+                </div>
+                <div>
+                    <label
+                        style="font-size: 0.8rem; font-weight: 700; color: var(--text-color); margin-bottom: 4px; display: block;">المسافة
+                        بين السطور</label>
+                    <div class="range-control" style="padding: 6px 10px;">
+                        <input type="range" id="quickLineSpacingRange" min="1" max="4" step="0.1" value="1.6"
+                            oninput="updateStyles('quick')">
+                        <span class="range-val" id="quickLineSpacingVal" style="font-size: 0.8rem;">1.6</span>
+                    </div>
+                </div>
+                <div>
+                    <label
+                        style="font-size: 0.8rem; font-weight: 700; color: var(--text-color); margin-bottom: 4px; display: block;">حجم
+                        اللوجو</label>
+                    <div class="range-control" style="padding: 6px 10px;">
+                        <input type="range" id="quickLogoSizeRange" min="50" max="300" value="180"
+                            oninput="updateStyles('quick')">
+                        <span class="range-val" id="quickLogoSizeVal" style="font-size: 0.8rem;">180</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- شريط التحكم العائم في وضع العزف -->
+        <div class="perf-controls" id="perfControls">
+            <button class="btn-danger" onclick="togglePerformanceMode(false)" title="خروج من وضع العزف"><i
+                    data-lucide="x"></i> خروج</button>
+
+            <div style="width: 1px; height: 30px; background: rgba(255,255,255,0.2); margin: 0 5px;"></div>
+
+            <div style="display: flex; align-items: center; gap: 5px;">
+                <button onclick="transposeAll(-1)" title="خفض الطبقة"
+                    style="background: rgba(255,255,255,0.1); color: white; border: none; padding: 8px; border-radius: 8px; cursor: pointer;"><i
+                        data-lucide="minus"></i></button>
+                <span id="perfKeyDisplay"
+                    style="color: var(--primary-color); font-weight: bold; font-family: sans-serif; min-width: 25px; text-align: center;">-</span>
+                <button onclick="transposeAll(1)" title="رفع الطبقة"
+                    style="background: rgba(255,255,255,0.1); color: white; border: none; padding: 8px; border-radius: 8px; cursor: pointer;"><i
+                        data-lucide="plus"></i></button>
+            </div>
+
+            <div id="setlistControlsContainer" style="display:none; align-items: center; gap: 10px;">
+                <div style="width: 1px; height: 30px; background: rgba(255,255,255,0.2); margin: 0 5px;"></div>
+                <button id="btnPrevSong" onclick="navigateSetlist(-1)"><i data-lucide="skip-back"></i> السابق</button>
+                <button id="btnNextSong" onclick="navigateSetlist(1)">التالي <i data-lucide="skip-forward"></i></button>
+            </div>
+
+            <div style="width: 1px; height: 30px; background: rgba(255,255,255,0.2); margin: 0 10px;"></div>
+
+            <div style="display: flex; align-items: center; gap: 15px;">
+                <button class="btn-accent" id="btnAutoScroll" onclick="toggleAutoScroll()" style="min-width: 120px;"><i
+                        data-lucide="play" id="scrollIcon"></i> تمرير تلقائي</button>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <i data-lucide="turtle" style="width: 18px; opacity: 0.7;"></i>
+                    <input type="range" id="scrollSpeed" min="1" max="10" value="3" title="سرعة التمرير">
+                    <i data-lucide="rabbit" style="width: 18px; opacity: 0.7;"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    </div>
+
+    <!-- النافذة المنبثقة للمكتبة الشاملة (مرتبة من اليمين لليسار) -->
+    <div id="libraryModal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title"><i data-lucide="library"></i> مكتبة الترانيم</div>
+                <div style="display: flex; gap: 8px;">
+                    <button class="close-btn" onclick="closeLibraryModal()" title="إغلاق">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Tab content moved to Dashboard -->
+        </div>
+    </div>
+
+    <!-- نافذة تسجيل الدخول / إنشاء الحساب -->
+    <div id="loginModalOverlay" style="display: none;">
+        <div class="login-box">
+            <h2 style="display: flex; align-items: center; justify-content: center; gap: 10px;">
+                <i data-lucide="cloud" style="width: 28px; height: 28px;"></i> مساحتك السحابية
+            </h2>
+            <p style="font-size: 0.9rem; color: #636e72; margin-bottom: 20px;">قم بتسجيل الدخول للاحتفاظ بترانيمك
+                ومزامنتها على جميع أجهزتك.</p>
+
+            <div id="loginErrorMsg" style="color: #d63031; font-weight: bold; margin-bottom: 15px; font-size: 0.9rem;">
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 15px;">
+                <div class="input-group">
+                    <input type="text" id="loginUsername" placeholder="اسم المستخدم (مثال: كريم)"
+                        style="text-align: center; font-weight: bold;">
+                </div>
+                <div class="input-group">
+                    <input type="password" id="loginPassword" placeholder="كلمة المرور"
+                        style="text-align: center; font-weight: bold;">
+                </div>
+
+                <button class="btn-solid-primary" style="padding: 15px; font-size: 1rem; margin-top: 10px;"
+                    onclick="submitLogin()">
+                    <i data-lucide="log-in"></i> تسجيل الدخول
+                </button>
+                <button class="btn-warning" style="padding: 15px; font-size: 1rem; margin-top: 5px; color: #d35400;"
+                    onclick="document.getElementById('loginModalOverlay').style.display='none'">
+                    <i data-lucide="x-circle"></i> إلغاء / عودة للرئيسية
+                </button>
+
+                <div style="display: flex; align-items: center; gap: 10px; margin: 10px 0;">
+                    <hr style="flex: 1; border: none; border-top: 1px solid var(--shadow-dark);">
+                    <span style="font-size: 0.8rem; color: #b2bec3;">أو</span>
+                    <hr style="flex: 1; border: none; border-top: 1px solid var(--shadow-dark);">
+                </div>
+
+                <button class="btn-secondary"
+                    style="padding: 12px; background: transparent; border: 2px solid var(--primary-color); color: var(--primary-color);"
+                    onclick="signupCustom()">
+                    <i data-lucide="user-plus"></i> إنشاء حساب جديد
+                </button>
+
+                <button
+                    style="background: transparent; border: none; box-shadow: none; color: #b2bec3; margin-top: 10px; text-decoration: underline; font-size: 0.85rem; cursor: pointer;"
+                    onclick="bypassLogin()">
+                    الدخول كضيف مؤقتاً (بدون مزامنة سحابية)
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- نافذة إضافة لقائمة خدمة -->
+    <div id="addToSetlistModalOverlay" class="modal-overlay"
+        style="z-index: 10000; justify-content: center; align-items: center;">
+        <div
+            style="background: var(--bg-color); padding: 30px; border-radius: 20px; width: 90%; max-width: 450px; box-shadow: 8px 8px 20px var(--shadow-dark), -8px -8px 20px var(--shadow-light); max-height: 80vh; display: flex; flex-direction: column;">
+            <div
+                style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 2px dashed var(--shadow-dark); padding-bottom: 15px;">
+                <h3
+                    style="margin: 0; color: var(--primary-color); display: flex; align-items: center; gap: 10px; font-size: 1.3rem;">
+                    <i data-lucide="list-plus"></i> إضافة لقائمة خدمة
+                </h3>
+                <button class="close-btn" style="width: 40px; height: 40px;" onclick="closeAddToSetlistModal()"
+                    title="إغلاق">
+                    <i data-lucide="x"></i>
+                </button>
+            </div>
+            <p style="font-size: 0.95rem; color: var(--text-color); margin-bottom: 20px; font-weight: bold;">اختر
+                القائمة التي تود إضافة الترنيمة إليها:</p>
+            <div id="availableSetlistsContainer"
+                style="display: flex; flex-direction: column; gap: 12px; overflow-y: auto; padding-right: 5px; flex: 1;">
+                <!-- سيتم تعبئة القوائم هنا -->
+            </div>
+        </div>
+    </div>
+
+    <!-- نافذة استيراد قائمة خدمة مشتركة -->
+    <div id="importSharedSetlistModalOverlay" class="modal-overlay"
+        style="z-index: 10000; justify-content: center; align-items: center; display: none;">
+        <div
+            style="background: var(--bg-color); padding: 30px; border-radius: 20px; width: 90%; max-width: 450px; box-shadow: 8px 8px 20px var(--shadow-dark), -8px -8px 20px var(--shadow-light); display: flex; flex-direction: column;">
+            <div
+                style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 2px dashed var(--shadow-dark); padding-bottom: 15px;">
+                <h3 style="margin: 0; display: flex; align-items: center; gap: 8px; color: var(--primary-color);">
+                    <i data-lucide="download-cloud"></i> استقبال قائمة خدمة
+                </h3>
+            </div>
+
+            <p id="importSharedSetlistMessage"
+                style="color: #636e72; font-size: 0.95rem; line-height: 1.5; margin-bottom: 20px; text-align: center;">
+                جاري التحقق من الرابط...
+            </p>
+
+            <div id="importSharedSetlistLoader" style="display: flex; justify-content: center; margin: 20px 0;">
+                <i data-lucide="loader"
+                    style="color: var(--primary-color); width: 40px; height: 40px; animation: spin 2s linear infinite;"></i>
+            </div>
+
+            <style>
+                @keyframes spin {
+                    100% {
+                        transform: rotate(360deg);
+                    }
+                }
+            </style>
+
+            <div id="importSharedSetlistActions"
+                style="display: none; justify-content: center; gap: 15px; margin-top: 10px;">
+                <button class="btn-success" style="padding: 10px 20px; flex: 1;"
+                    onclick="confirmImportSharedSetlist()"><i data-lucide="check"></i> حفظ القائمة</button>
+                <button class="btn-danger" style="padding: 10px 20px; flex: 1;" onclick="cancelImportSharedSetlist()"><i
+                        data-lucide="x"></i> إلغاء</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- نافذة تصدير PDF -->
+    <div id="pdfPreviewModalOverlay" class="modal-overlay"
+        style="z-index: 10000; justify-content: center; align-items: center;">
+        <div
+            style="background: var(--bg-color); padding: 30px; border-radius: 20px; width: 95%; max-width: 800px; box-shadow: 8px 8px 20px var(--shadow-dark), -8px -8px 20px var(--shadow-light); max-height: 90vh; display: flex; flex-direction: column;">
+            <div
+                style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 2px dashed var(--shadow-dark); padding-bottom: 15px;">
+                <h3
+                    style="margin: 0; color: var(--primary-color); display: flex; align-items: center; gap: 10px; font-size: 1.3rem;">
+                    <i data-lucide="file-text"></i> معاينة تصدير PDF
+                </h3>
+                <button class="close-btn" style="width: 40px; height: 40px;" onclick="closePdfPreviewModal()"
+                    title="إغلاق">
+                    <i data-lucide="x"></i>
+                </button>
+            </div>
+            <div id="pdfPreviewContainer"
+                style="flex: 1; overflow-y: auto; overflow-x: auto; background: white; padding: 20px; border-radius: 10px; border: 1px solid #ddd; display: flex; justify-content: center; min-height: 300px; max-height: 60vh;">
+                <!-- سيتم وضع المعاينة هنا -->
+            </div>
+            <div
+                style="display: flex; justify-content: flex-end; gap: 15px; margin-top: 20px; border-top: 1px solid var(--shadow-dark); padding-top: 15px;">
+                <button class="btn-danger" onclick="closePdfPreviewModal()"><i data-lucide="x"></i> إلغاء</button>
+                <button class="btn-success" onclick="downloadPDF()"><i data-lucide="download"></i> تنزيل كملف
+                    PDF</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // التهيئة وإدارة الحالة الأساسية
+        window.state = {
+            chordMap: {}, lineIds: [], lastLines: [], history: [],
+            selectedChord: null, dragging: null, logoDataUrl: null,
+            isDarkMode: false, originalKey: "", tempo: "",
+            isEditMode: false, copiedSection: null, currentSongId: null,
+            editingMode: 'private',
+            library: [], baseLibrary: [], pendingRequests: [], setlists: [], expandedSetlists: {},
+            scrollInterval: null, isScrolling: false, activeSetlistIndex: -1, activeSetlistSongs: []
+        };
+
+        const constants = {
+            notesSharp: ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'],
+            notesFlat: ['C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab', 'A', 'Bb', 'B'],
+            flatKeys: ['F', 'Bb', 'Eb', 'Ab', 'Db', 'Gb', 'Cb', 'Dm', 'Gm', 'Cm', 'Fm', 'Bbm', 'Ebm', 'Abm'],
+            enharmonicsToSharp: { 'Db': 'C#', 'Eb': 'D#', 'Gb': 'F#', 'Ab': 'G#', 'Bb': 'A#' },
+            enharmonicsToFlat: { 'C#': 'Db', 'D#': 'Eb', 'F#': 'Gb', 'G#': 'Ab', 'A#': 'Bb' },
+            scales: {
+                "C": ["C", "Dm", "Em", "F", "G", "Am", "Bdim", "CM7", "Dm7", "Em7", "FM7", "G7", "Am7", "Bø7"],
+                "G": ["G", "Am", "Bm", "C", "D", "Em", "F#dim", "GM7", "Am7", "Bm7", "CM7", "D7", "Em7", "F#ø7"],
+                "D": ["D", "Em", "F#m", "G", "A", "Bm", "C#dim", "DM7", "Em7", "F#m7", "GM7", "A7", "Bm7", "C#ø7"],
+                "A": ["A", "Bm", "C#m", "D", "E", "F#m", "G#dim", "AM7", "Bm7", "C#m7", "DM7", "E7", "F#m7", "G#ø7"],
+                "E": ["E", "F#m", "G#m", "A", "B", "C#m", "D#dim", "EM7", "F#m7", "G#m7", "AM7", "B7", "C#m7", "D#ø7"],
+                "B": ["B", "C#m", "D#m", "E", "F#", "G#m", "A#dim", "BM7", "C#m7", "D#m7", "EM7", "F#7", "G#m7", "A#ø7"],
+                "F#": ["F#", "G#m", "A#m", "B", "C#", "D#m", "E#dim", "F#M7", "G#m7", "A#m7", "BM7", "C#7", "D#m7", "E#ø7"],
+                "C#": ["C#", "D#m", "E#m", "F#", "G#", "A#m", "B#dim", "C#M7", "D#m7", "E#m7", "F#M7", "G#7", "A#m7", "B#ø7"],
+                "F": ["F", "Gm", "Am", "Bb", "C", "Dm", "Edim", "FM7", "Gm7", "Am7", "BbM7", "C7", "Dm7", "Eø7"],
+                "Bb": ["Bb", "Cm", "Dm", "Eb", "F", "Gm", "Adim", "BbM7", "Cm7", "Dm7", "EbM7", "F7", "Gm7", "Aø7"],
+                "Eb": ["Eb", "Fm", "Gm", "Ab", "Bb", "Cm", "Ddim", "EbM7", "Fm7", "Gm7", "AbM7", "Bb7", "Cm7", "Dø7"],
+                "Ab": ["Ab", "Bbm", "Cm", "Db", "Eb", "Fm", "Gdim", "AbM7", "Bbm7", "Cm7", "DbM7", "Eb7", "Fm7", "Gø7"],
+                "Db": ["Db", "Ebm", "Fm", "Gb", "Ab", "Bbm", "Cdim", "DbM7", "Ebm7", "Fm7", "GbM7", "Ab7", "Bbm7", "Cø7"],
+                "Gb": ["Gb", "Abm", "Bbm", "Cb", "Db", "Ebm", "Fdim", "GbM7", "Abm7", "Bbm7", "CbM7", "Db7", "Ebm7", "Fø7"],
+                "Cb": ["Cb", "Dbm", "Ebm", "Fb", "Gb", "Abm", "Bbdim", "CbM7", "Dbm7", "Ebm7", "FbM7", "Gb7", "Abm7", "Bbø7"],
+                "Am": ["Am", "Bdim", "C", "Dm", "Em", "F", "G", "E7", "Am7", "Bø7", "C7", "Dm7", "Em7", "F7", "G7"],
+                "Em": ["Em", "F#dim", "G", "Am", "Bm", "C", "D", "B7", "Em7", "F#ø7", "G7", "Am7", "Bm7", "C7", "D7"],
+                "Bm": ["Bm", "C#dim", "D", "Em", "F#m", "G", "A", "F#7", "Bm7", "C#ø7", "D7", "Em7", "F#m7", "G7", "A7"],
+                "F#m": ["F#m", "G#dim", "A", "Bm", "C#m", "D", "E", "C#7", "F#m7", "G#ø7", "A7", "Bm7", "C#m7", "D7", "E7"],
+                "C#m": ["C#m", "D#dim", "E", "F#m", "G#m", "A", "B", "G#7", "C#m7", "D#ø7", "E7", "F#m7", "G#m7", "A7", "B7"],
+                "G#m": ["G#m", "A#dim", "B", "C#m", "D#m", "E", "F#", "D#7", "G#m7", "A#ø7", "B7", "C#m7", "D#m7", "E7", "F#7"],
+                "D#m": ["D#m", "E#dim", "F#", "G#m", "A#m", "B", "C#", "A#7", "D#m7", "E#ø7", "F#7", "G#m7", "A#m7", "B7", "C#7"],
+                "A#m": ["A#m", "B#dim", "C#", "D#m", "E#m", "F#", "G#", "E#7", "A#m7", "B#ø7", "C#7", "D#m7", "E#m7", "F#7", "G#7"],
+                "Dm": ["Dm", "Edim", "F", "Gm", "Am", "Bb", "C", "A7", "Dm7", "Eø7", "F7", "Gm7", "Am7", "Bb7", "C7"],
+                "Gm": ["Gm", "Adim", "Bb", "Cm", "D", "Eb", "F", "D7", "Gm7", "Aø7", "Bb7", "Cm7", "D7", "Eb7", "F7"],
+                "Cm": ["Cm", "Ddim", "Eb", "Fm", "Gm", "Ab", "Bb", "G7", "Cm7", "Dø7", "Eb7", "Fm7", "Gm7", "Ab7", "Bb7"],
+                "Fm": ["Fm", "Gdim", "Ab", "Bbm", "Cm", "Db", "Eb", "C7", "Fm7", "Gø7", "Ab7", "Bbm7", "Cm7", "Db7", "Eb7"],
+                "Bbm": ["Bbm", "Cdim", "Db", "Ebm", "Fm", "Gb", "Ab", "F7", "Bbm7", "Cø7", "Db7", "Ebm7", "Fm7", "Gb7", "Ab7"],
+                "Ebm": ["Ebm", "Fdim", "Gb", "Abm", "Bbm", "Cb", "Db", "Bb7", "Ebm7", "Fø7", "Gb7", "Abm7", "Bbm7", "Cb7", "Db7"],
+                "Abm": ["Abm", "Bbdim", "Cb", "Dbm", "Ebm", "Fb", "Gb", "Eb7", "Abm7", "Bbø7", "Cb7", "Dbm7", "Ebm7", "Fb7", "Gb7"]
+            }
+        };
+
+        // --- دوال الواجهة والـ DOM ---
+        function generateLineId() { return 'line_' + Math.random().toString(36).substr(2, 9); }
+        window.generateId = function () { return Date.now().toString(36); };
+
+        function toggleEditMode() {
+            state.isEditMode = !state.isEditMode;
+            const btn = document.getElementById('btnToggleEditMode');
+            const captureArea = document.getElementById('captureArea');
+            if (state.isEditMode) { btn.classList.add('active'); captureArea.classList.add('edit-mode-active'); window.showSaveStatus("تم تفعيل وضع إضافة الكوردات"); }
+            else { btn.classList.remove('active'); captureArea.classList.remove('edit-mode-active'); window.showSaveStatus("تم إيقاف إضافة الكوردات. يمكنك التمرير."); }
+        }
+
+        function toggleQuickSettings(e) {
+            if (e) e.stopPropagation();
+            const panel = document.getElementById('quickSettingsPanel');
+            if (panel.style.display === 'none') { panel.style.display = 'block'; if (window.lucide) window.lucide.createIcons(); }
+            else { panel.style.display = 'none'; }
+        }
+
+        function switchEditorTab(tabId) {
+            document.querySelectorAll('.editor-tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.editor-tab-content').forEach(content => content.classList.remove('active'));
+            if (event && event.currentTarget) event.currentTarget.classList.add('active');
+            const tab = document.getElementById(tabId);
+            if (tab) tab.classList.add('active');
+        }
+
+        function switchModalTab(tabId) {
+            document.querySelectorAll('#dashboardTabsContainer .tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('#dashboardTabsContainer .tab-content').forEach(content => content.classList.remove('active'));
+            if (event && event.currentTarget) event.currentTarget.classList.add('active');
+            const tab = document.getElementById(tabId);
+            if (tab) tab.classList.add('active');
+        }
+
+        function toggleDarkMode() {
+            state.isDarkMode = !state.isDarkMode;
+            document.documentElement.setAttribute('data-theme', state.isDarkMode ? 'dark' : 'light');
+            const icon = document.getElementById('themeIcon');
+            if (icon) icon.setAttribute('data-lucide', state.isDarkMode ? 'sun' : 'moon');
+            if (window.lucide) window.lucide.createIcons();
+            localStorage.setItem('taraneem_theme', state.isDarkMode ? 'dark' : 'light');
+        }
+
+        function getCurrentEditorData() {
+            return {
+                title: document.getElementById("title") ? document.getElementById("title").value : "بدون عنوان",
+                key: document.getElementById("key") ? document.getElementById("key").value : "",
+                tempo: document.getElementById("tempo") ? document.getElementById("tempo").value : "",
+                originalKey: state.originalKey,
+                lyrics: document.getElementById("lyrics") ? document.getElementById("lyrics").value : "",
+                headerFontSize: document.getElementById("headerFontSizeRange") ? document.getElementById("headerFontSizeRange").value : "36",
+                fontSize: document.getElementById("fontSizeRange") ? document.getElementById("fontSizeRange").value : "24",
+                chordSize: document.getElementById("chordSizeRange") ? document.getElementById("chordSizeRange").value : "16",
+                lineSpacing: document.getElementById("lineSpacingRange") ? document.getElementById("lineSpacingRange").value : "1.6",
+                logoSize: document.getElementById("logoSizeRange") ? document.getElementById("logoSizeRange").value : "180",
+                chordMap: state.chordMap,
+                lineIds: state.lineIds,
+                logo: state.logoDataUrl
+            };
+        }
+
+        async function saveToLibrary() {
+            const data = getCurrentEditorData();
+            if (!data.lyrics.trim()) { alert("لا يمكن حفظ ترنيمة بدون كلمات!"); return; }
+
+            // إذا كان في وضع تعديل الأساسية، واليوزر ضغط على (مكتبتي) بالخطأ، نعطيها ID جديد لتصبح في الخاصة
+            if (!state.currentSongId || state.editingMode === 'base') {
+                state.currentSongId = window.generateId();
+                state.editingMode = 'private'; // يتحول لخاصة
+            }
+            data.id = state.currentSongId;
+
+            const idx = state.library.findIndex(s => s.id === state.currentSongId);
+            if (idx > -1) { state.library[idx] = data; } else { state.library.push(data); }
+            if (window.renderLibraryList) window.renderLibraryList();
+            if (window.syncCloudData) { await window.syncCloudData(); }
+        }
+
+        window.saveToBaseLibrary = async function () {
+            if (!window.isAdmin()) return;
+            const data = getCurrentEditorData();
+            if (!data.lyrics.trim()) { alert("لا يمكن حفظ ترنيمة فارغة!"); return; }
+
+            if (!state.currentSongId || state.editingMode !== 'base') {
+                state.currentSongId = window.generateId();
+                state.editingMode = 'base';
+            }
+            data.id = state.currentSongId;
+
+            const idx = state.baseLibrary.findIndex(s => s.id === state.currentSongId);
+            if (idx > -1) { state.baseLibrary[idx] = data; } else { state.baseLibrary.push(data); }
+            if (window.renderBaseLibrary) window.renderBaseLibrary();
+            if (window.syncBaseLibrary) {
+                window.showSaveStatus("جاري التحديث في الأساسية...");
+                const ok = await window.syncBaseLibrary();
+                if (ok) window.showSaveStatus("تم تحديث المكتبة الأساسية بنجاح 🌟");
+            }
+        };
+
+        function loadFromLibrary(id) {
+            const song = state.library.find(s => s.id === id);
+            if (!song) return;
+            window.showEditor();
+            if (window.applyAutosaveData) window.applyAutosaveData(song);
+            state.editingMode = 'private';
+            state.history = [];
+            closeLibraryModal();
+        }
+
+        window.applyAutosaveData = function (data) {
+            state.currentSongId = data.id || null;
+            state.originalKey = data.originalKey || data.key || "";
+            if (document.getElementById("title")) document.getElementById("title").value = data.title || "";
+            if (document.getElementById("key")) document.getElementById("key").value = data.key || "";
+            if (document.getElementById("tempo")) document.getElementById("tempo").value = data.tempo || "";
+
+            const textarea = document.getElementById("lyrics");
+            if (textarea) textarea.value = data.lyrics || "";
+            state.lastLines = (data.lyrics || "").split('\n');
+            const linesCount = state.lastLines.length;
+
+            state.lineIds = data.lineIds && data.lineIds.length === linesCount ? [...data.lineIds] : Array.from({ length: linesCount }, () => generateLineId());
+
+            if (data.headerFontSize && document.getElementById("headerFontSizeRange")) document.getElementById("headerFontSizeRange").value = data.headerFontSize;
+            if (data.fontSize && document.getElementById("fontSizeRange")) document.getElementById("fontSizeRange").value = data.fontSize;
+            if (data.chordSize && document.getElementById("chordSizeRange")) document.getElementById("chordSizeRange").value = data.chordSize;
+            if (data.lineSpacing && document.getElementById("lineSpacingRange")) document.getElementById("lineSpacingRange").value = data.lineSpacing;
+            if (data.logoSize && document.getElementById("logoSizeRange")) document.getElementById("logoSizeRange").value = data.logoSize;
+
+            updateStyles('main');
+            state.chordMap = data.chordMap ? JSON.parse(JSON.stringify(data.chordMap)) : {};
+            state.logoDataUrl = data.logo || null;
+            const logoName = document.getElementById("logoName");
+            if (logoName) {
+                if (data.logo) logoName.innerText = "يوجد لوجو محفوظ";
+                else logoName.innerText = "";
+            }
+            render(); updateSuggestedChords();
+        }
+
+        function deleteFromLibrary(id) {
+            if (confirm("تأكيد حذف الترنيمة نهائياً من مكتبتك؟")) {
+                state.library = state.library.filter(s => s.id !== id);
+                state.setlists.forEach(list => {
+                    if (list.songs.includes(id)) { list.songs = list.songs.filter(songId => songId !== id); }
+                });
+                if (state.currentSongId === id && state.editingMode === 'private') clearInputs(true);
+                if (window.renderLibraryList) window.renderLibraryList();
+                if (window.renderSetlists) window.renderSetlists();
+                if (window.syncCloudData) { window.syncCloudData(); }
+            }
+        }
+
+        // إعداد الإيقونات وحالة التنبيهات
+        window.updateAdminUI = function () {
+            window.safeDOM(() => {
+                const pendingTab = document.getElementById('pendingTabBtn');
+                const btnSaveBase = document.getElementById('btnSaveBase');
+                const dashbtnLogout = document.getElementById('dashbtnLogout');
+
+                if (dashbtnLogout) {
+                    dashbtnLogout.style.display = window.activeAccount ? 'flex' : 'none';
+                }
+
+                if (window.isAdmin()) {
+                    if (pendingTab) pendingTab.style.display = 'block';
+                    if (btnSaveBase) btnSaveBase.style.display = 'flex';
+                } else {
+                    if (pendingTab) pendingTab.style.display = 'none';
+                    if (btnSaveBase) btnSaveBase.style.display = 'none';
+                }
+                if (window.lucide) window.lucide.createIcons();
+            });
+        };
+
+        window.playLocalSong = function (id) {
+            const song = state.library.find(s => s.id === id);
+            if (!song) return;
+            window.showEditor();
+            if (window.applyAutosaveData) window.applyAutosaveData(song);
+            closeLibraryModal();
+            togglePerformanceMode(true);
+        };
+
+        window.exportLibraryToFile = function () {
+            if (state.library.length === 0 && state.setlists.length === 0) {
+                alert("المكتبة فارغة لا يوجد ما يمكن تصديره.");
+                return;
+            }
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({
+                library: state.library,
+                setlists: state.setlists
+            }));
+            const downloadAnchorNode = document.createElement('a');
+            downloadAnchorNode.setAttribute("href", dataStr);
+            const date = new Date().toISOString().split('T')[0];
+            downloadAnchorNode.setAttribute("download", `taraneem_backup_${date}.json`);
+            document.body.appendChild(downloadAnchorNode);
+            downloadAnchorNode.click();
+            downloadAnchorNode.remove();
+            if (window.showSaveStatus) window.showSaveStatus("تم تحميل النسخة الاحتياطية بنجاح 📥");
+        };
+
+        window.importLibraryFromFile = function (event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = async function (e) {
+                try {
+                    const importedData = JSON.parse(e.target.result);
+                    if (importedData && Array.isArray(importedData.library)) {
+                        state.library = importedData.library;
+                        state.setlists = importedData.setlists || [];
+                        if (window.renderLibraryList) window.renderLibraryList();
+                        if (window.renderSetlists) window.renderSetlists();
+                        if (window.syncCloudData) { await window.syncCloudData(); }
+                        if (window.showSaveStatus) window.showSaveStatus("تم استرداد النسخة الاحتياطية بنجاح 📤");
+                    } else {
+                        alert("ملف غير صالح أو لا يحتوي على بنية المكتبة الصحيحة.");
+                    }
+                } catch (error) {
+                    alert("عذراً، حدث خطأ أثناء قراءة الملف. تأكد من أنه ملف JSON صالح.");
+                }
+                event.target.value = ''; // Reset input
+            };
+            reader.readAsText(file);
+        };
+
+        // دالة عرض مكتبتي الخاصة
+        window.renderLibraryList = function () {
+            window.safeDOM(() => {
+                const container = document.getElementById('libraryList');
+                const searchEl = document.getElementById('searchLibrary');
+                if (!container) return;
+                const search = searchEl ? searchEl.value.toLowerCase() : "";
+                container.innerHTML = '';
+
+                if (state.library.length === 0) {
+                    container.innerHTML = '<div style="text-align:center; padding: 40px; color:#aaa;"><i data-lucide="music-3" style="width:48px;height:48px;opacity:0.5;margin-bottom:10px;"></i><br>مكتبتك فارغة. اكتب ترنيمة واضغط "حفظ"</div>';
+                    if (window.lucide) window.lucide.createIcons(); return;
+                }
+
+                const sortedLibrary = [...state.library].sort((a, b) => a.title.localeCompare(b.title, 'ar'));
+                sortedLibrary.forEach(song => {
+                    if (search) {
+                        const s = search.toLowerCase();
+                        const matchTitle = song.title && song.title.toLowerCase().includes(s);
+                        const matchLyrics = song.lyrics && song.lyrics.toLowerCase().includes(s);
+                        const matchKey = song.key && song.key.toLowerCase() === s.trim();
+                        if (!matchTitle && !matchLyrics && !matchKey) return;
+                    }
+                    const item = document.createElement('div');
+                    item.className = 'list-item';
+                    item.innerHTML = `
+                        <div class="list-item-info">
+                            <strong>${song.title}</strong>
+                            <span>Key: ${song.key || '-'}</span>
+                        </div>
+                        <div class="list-item-actions">
+                            <button class="btn-icon" style="color: #ff4757;" title="عرض في وضع العزف" onclick="playLocalSong('${song.id}')"><i data-lucide="play" style="margin-left: -2px;"></i></button>
+                            <button class="btn-primary btn-icon" title="إضافة لقائمة خدمة" onclick="openAddToSetlistModal('${song.id}')"><i data-lucide="list-plus"></i></button>
+                            <button class="btn-primary btn-icon" title="فتح" onclick="loadFromLibrary('${song.id}')"><i data-lucide="folder-open"></i></button>
+                            <button class="btn-warning btn-icon" title="اقتراح للمكتبة الأساسية" onclick="proposeSong('${song.id}')"><i data-lucide="share"></i></button>
+                            <button class="btn-danger btn-icon" title="حذف" onclick="deleteFromLibrary('${song.id}')"><i data-lucide="trash-2"></i></button>
+                        </div>
+                    `;
+                    container.appendChild(item);
+                });
+                if (window.lucide) window.lucide.createIcons();
+            });
+        };
+
+        window.playBaseSong = function (id) {
+            const song = state.baseLibrary.find(s => s.id === id);
+            if (!song) return;
+            window.showEditor();
+            if (window.applyAutosaveData) window.applyAutosaveData(song);
+            closeLibraryModal();
+            window.showEditor();
+            togglePerformanceMode(true);
+        };
+
+        // دالة عرض المكتبة الأساسية
+        window.renderBaseLibrary = function () {
+            window.safeDOM(() => {
+                const container = document.getElementById('baseLibraryList');
+                const searchEl = document.getElementById('searchBaseLibrary');
+                if (!container) return;
+                const search = searchEl ? searchEl.value.toLowerCase() : "";
+                container.innerHTML = '';
+
+                if (state.baseLibrary.length === 0) {
+                    container.innerHTML = '<div style="text-align:center; padding: 40px; color:#aaa;"><i data-lucide="book" style="width:48px;height:48px;opacity:0.5;margin-bottom:10px;"></i><br>لا توجد ترانيم في المكتبة الأساسية بعد.</div>';
+                    if (window.lucide) window.lucide.createIcons(); return;
+                }
+
+                const sortedBaseLibrary = [...state.baseLibrary].sort((a, b) => a.title.localeCompare(b.title, 'ar'));
+                sortedBaseLibrary.forEach(song => {
+                    if (search) {
+                        const s = search.toLowerCase();
+                        const matchTitle = song.title && song.title.toLowerCase().includes(s);
+                        const matchLyrics = song.lyrics && song.lyrics.toLowerCase().includes(s);
+                        const matchKey = song.key && song.key.toLowerCase() === s.trim();
+                        if (!matchTitle && !matchLyrics && !matchKey) return;
+                    }
+                    let adminActions = '';
+                    if (window.isAdmin()) {
+                        adminActions = `
+                            <button class="btn-primary btn-icon" title="فتح" onclick="loadFromBaseForEdit('${song.id}')"><i data-lucide="folder-open"></i></button>
+                            <button class="btn-danger btn-icon" title="حذف من الأساسية" onclick="deleteFromBase('${song.id}')"><i data-lucide="trash"></i></button>
+                        `;
+                    }
+
+                    const item = document.createElement('div');
+                    item.className = 'list-item';
+                    item.innerHTML = `
+                        <div class="list-item-info">
+                            <strong>${song.title} <i data-lucide="check-badge" style="color:#f1c40f; width:18px; display:inline-block; vertical-align:middle;" title="نسخة معتمدة"></i></strong>
+                            <span>Key: ${song.key || '-'}</span>
+                        </div>
+                        <div class="list-item-actions">
+                            <button class="btn-icon" style="color: #ff4757; margin-left: 5px;" title="عرض في وضع العزف" onclick="playBaseSong('${song.id}')"><i data-lucide="play" style="margin-left: -2px;"></i></button>
+                            <button class="btn-primary btn-icon" title="إضافة لقائمة خدمة" onclick="openAddToSetlistModal('${song.id}')"><i data-lucide="list-plus"></i></button>
+                            <button class="btn-success" style="padding: 8px 15px; border-radius: 12px;" title="نسخ إلى مكتبتي الخاصة لتعديلها" onclick="cloneToPrivate('${song.id}')"><i data-lucide="copy"></i> نسخ لمكتبتي</button>
+                            ${adminActions}
+                        </div>
+                    `;
+                    container.appendChild(item);
+                });
+                if (window.lucide) window.lucide.createIcons();
+            });
+        };
+
+        // دالة عرض طلبات الإضافة
+        window.renderPendingRequests = function () {
+            window.safeDOM(() => {
+                const container = document.getElementById('pendingList');
+                if (!container) return;
+                container.innerHTML = '';
+
+                if (state.pendingRequests.length === 0) {
+                    container.innerHTML = '<div style="text-align:center; padding: 40px; color:#aaa;"><i data-lucide="check-circle-2" style="width:48px;height:48px;opacity:0.5;margin-bottom:10px;"></i><br>لا توجد طلبات إضافة معلقة.</div>';
+                    if (window.lucide) window.lucide.createIcons(); return;
+                }
+
+                state.pendingRequests.forEach(req => {
+                    const item = document.createElement('div');
+                    item.className = 'list-item';
+                    item.innerHTML = `
+                        <div class="list-item-info">
+                            <strong>${req.title}</strong>
+                            <div style="font-size:0.85rem; color:#636e72; margin-top:5px;">بواسطة: <b style="color:var(--primary-color);">${req.proposedBy}</b></div>
+                        </div>
+                        <div class="list-item-actions">
+                            <button class="btn-primary" style="padding: 8px 15px; border-radius: 12px;" onclick="previewPendingRequest('${req.proposalId}')" title="فتح"><i data-lucide="folder-open"></i> فتح</button>
+                            <button class="btn-success" style="padding: 8px 15px; border-radius: 12px;" onclick="acceptProposal('${req.proposalId}')"><i data-lucide="check"></i> قبول</button>
+                            <button class="btn-danger" style="padding: 8px 15px; border-radius: 12px;" onclick="rejectProposal('${req.proposalId}')"><i data-lucide="x"></i> رفض</button>
+                        </div>
+                    `;
+                    container.appendChild(item);
+                });
+                if (window.lucide) window.lucide.createIcons();
+            });
+        };
+
+        window.previewPendingRequest = function (proposalId) {
+            const req = state.pendingRequests.find(r => r.proposalId === proposalId);
+            if (!req) return;
+
+            // Generate full song data using the proposed keys and defaults
+            const songData = Object.assign({}, req);
+            if (!songData.chordMap) songData.chordMap = {};
+            if (!songData.lineIds || songData.lineIds.length === 0) {
+                const linesCount = (songData.lyrics || "").split('\n').length;
+                songData.lineIds = Array.from({ length: linesCount }, () => generateLineId());
+            }
+            if (!songData.timestamp) songData.timestamp = Date.now();
+
+            state.history = [];
+            window.applyAutosaveData(songData);
+            window.state.editingMode = 'private'; // Ensure it's not base-mode locked during preview so it can be evaluated
+            window.closeLibraryModal();
+            window.showEditor();
+            window.showSaveStatus("تم فتح الترنيمة للمعاينة");
+        };
+
+        function openLibraryModal() {
+            if (window.renderLibraryList) window.renderLibraryList();
+            if (window.renderBaseLibrary) window.renderBaseLibrary();
+            if (window.renderSetlists) window.renderSetlists();
+            if (window.renderPendingRequests && window.isAdmin()) window.renderPendingRequests();
+            const modal = document.getElementById('libraryModal');
+            if (modal) modal.classList.add('active');
+        }
+
+        function closeLibraryModal() {
+            const modal = document.getElementById('libraryModal');
+            if (modal) modal.classList.remove('active');
+        }
+
+        // تفاصيل تعديل الكود والأزرار الخاصة بالقوائم ووظائف التطبيق
+        window.renderSetlists = function () {
+            window.safeDOM(() => {
+                const container = document.getElementById('setlistsList');
+                if (!container) return;
+                container.innerHTML = '';
+                if (state.setlists.length === 0) {
+                    container.innerHTML = '<div style="text-align:center; padding: 40px; color:#aaa;"><i data-lucide="list" style="width:48px;height:48px;opacity:0.5;margin-bottom:10px;"></i><br>لا توجد قوائم خدمة.</div>';
+                    if (window.lucide) window.lucide.createIcons();
+                    return;
+                }
+
+                state.setlists.forEach(list => {
+                    const item = document.createElement('div');
+                    item.className = 'list-item';
+                    item.style.flexDirection = 'column'; item.style.alignItems = 'stretch';
+
+                    let songsHtml = '';
+                    let displayNum = 1;
+                    list.songs.forEach((songId, idx) => {
+                        const song = state.library.find(s => s.id === songId) || state.baseLibrary.find(s => s.id === songId);
+                        if (song) {
+                            const keyBadge = song.key ? `<span style="font-size:0.8rem; color:var(--primary-color); margin-right:8px; display:inline-block; direction:ltr;">[${song.key}]</span>` : '';
+                            songsHtml += `<div style="display:flex; justify-content:space-between; align-items:center; font-size:0.95rem; padding:8px 10px; background:var(--bg-color); border-radius:8px; margin-bottom:5px;">
+                                <span style="display:flex; align-items:center;"><b>${displayNum++}.</b><span style="margin-right:8px; margin-left: 5px;">${song.title}</span> ${keyBadge} ${state.baseLibrary.find(s => s.id === songId) ? '<i data-lucide="shield-check" style="width:14px; color:#ff4757; margin-right:4px;" title="من الأساسية"></i>' : ''}</span>
+                                <div style="display:flex; gap:4px; align-items:center;">
+                                    ${idx > 0 ? `<button class="btn-icon" style="padding:4px; color:var(--primary-color); box-shadow:none; background:transparent;" onclick="event.stopPropagation(); window.moveSongUpInSetlist('${list.id}', ${idx})"><i data-lucide="chevron-up" style="width:16px;"></i></button>` : `<div style="width:24px;"></div>`}
+                                    ${idx < list.songs.length - 1 ? `<button class="btn-icon" style="padding:4px; color:var(--primary-color); box-shadow:none; background:transparent;" onclick="event.stopPropagation(); window.moveSongDownInSetlist('${list.id}', ${idx})"><i data-lucide="chevron-down" style="width:16px;"></i></button>` : `<div style="width:24px;"></div>`}
+                                    <button class="btn-icon btn-danger" style="padding:4px; box-shadow:none; background:transparent; margin-left: 8px;" onclick="removeSongFromSetlist('${list.id}', '${songId}')"><i data-lucide="x" style="width:16px;"></i></button>
+                                </div>
+                            </div>`;
+                        }
+                    });
+
+                    let options = `<option value="">+ أضف ترنيمة للقائمة...</option>`;
+                    const allSongs = [...state.library, ...state.baseLibrary.filter(b => !state.library.some(p => p.id === b.id))].sort((a, b) => a.title.localeCompare(b.title, 'ar'));
+                    allSongs.forEach(s => {
+                        if (!list.songs.includes(s.id)) {
+                            const keyStr = s.key ? ` [${s.key}]` : '';
+                            options += `<option value="${s.id}">${s.title}${keyStr}</option>`;
+                        }
+                    });
+
+                    const isExpanded = state.expandedSetlists[list.id];
+                    const chevronIcon = isExpanded ? 'chevron-up' : 'chevron-down';
+                    const contentDisplay = isExpanded ? 'block' : 'none';
+
+                    item.innerHTML = `
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: ${isExpanded ? '15px' : '0'}; border-bottom: ${isExpanded ? '1px solid var(--bg-color)' : 'none'}; padding-bottom:${isExpanded ? '10px' : '0'};">
+                            <strong onclick="toggleSetlist('${list.id}')" style="cursor:pointer; color:var(--primary-color); font-size:1.2rem; display:flex; align-items:center; gap:8px; flex:1;">
+                                <i data-lucide="${chevronIcon}" style="width:20px; transition: transform 0.3s;"></i>
+                                <i data-lucide="bookmark"></i> ${list.name} 
+                                <span style="font-size:0.8rem; background:var(--bg-color); padding:2px 8px; border-radius:10px;">${list.songs.length}</span>
+                            </strong>
+                            <div style="display:flex; gap:8px;">
+                                ${state.setlists.indexOf(list) > 0 ? `<button class="btn-primary btn-icon" style="width: 32px; height: 32px; padding: 0; display: flex; align-items: center; justify-content: center; border-radius: 50%; box-shadow: 0 4px 10px rgba(0,0,0,0.15);" onclick="event.stopPropagation(); window.moveSetlistUp('${list.id}')"><i data-lucide="arrow-up" style="width:16px;"></i></button>` : ''}
+                                ${state.setlists.indexOf(list) < state.setlists.length - 1 ? `<button class="btn-primary btn-icon" style="width: 32px; height: 32px; padding: 0; display: flex; align-items: center; justify-content: center; border-radius: 50%; box-shadow: 0 4px 10px rgba(0,0,0,0.15);" onclick="event.stopPropagation(); window.moveSetlistDown('${list.id}')"><i data-lucide="arrow-down" style="width:16px;"></i></button>` : ''}
+                                <button class="btn-solid-primary" style="padding: 6px 15px; font-size:0.8rem;" onclick="event.stopPropagation(); playSetlist('${list.id}')"><i data-lucide="play" style="width:14px;"></i> عزف القائمة</button>
+                                <button class="btn-success btn-icon" style="padding: 6px;" onclick="console.log('Clicked share!'); event.stopPropagation(); shareSetlist('${list.id}')" title="مشاركة القائمة بطريقة ذكية عبر رابط"><i data-lucide="share-2" style="width:14px;"></i></button>
+                                <button class="btn-danger btn-icon" style="padding: 6px;" onclick="event.stopPropagation(); deleteSetlist('${list.id}')"><i data-lucide="trash" style="width:14px;"></i></button>
+                            </div>
+                        </div>
+                        <div style="display: ${contentDisplay};">
+                            <div style="margin-bottom:15px; max-height:150px; overflow-y:auto;">${songsHtml || '<div style="color:#aaa; font-size:0.9rem; text-align:center;">القائمة فارغة</div>'}</div>
+                            <select onchange="addSongToSetlist('${list.id}', this.value); this.value='';" style="padding: 10px; font-size:0.9rem; font-weight:bold; cursor:pointer;">
+                                ${options}
+                            </select>
+                        </div>
+                    `;
+                    container.appendChild(item);
+                });
+                if (window.lucide) window.lucide.createIcons();
+            });
+        }
+
+        function createNewSetlist() {
+            const el = document.getElementById('newSetlistName');
+            if (!el) return;
+            const name = el.value.trim();
+            if (!name) return;
+            const newId = generateId();
+            const newList = { id: newId, name: name, songs: [] };
+            state.setlists.push(newList);
+            state.expandedSetlists[newId] = true;
+            el.value = '';
+            if (window.syncCloudData) window.syncCloudData();
+        }
+
+        function deleteSetlist(id) {
+            if (confirm("حذف قائمة الخدمة؟ (لن يتم حذف الترانيم نفسها)")) {
+                state.setlists = state.setlists.filter(l => l.id !== id);
+                if (window.syncCloudData) window.syncCloudData();
+                if (window.renderSetlists) window.renderSetlists();
+            }
+        }
+
+        window.moveSetlistUp = function (id) {
+            const idx = state.setlists.findIndex(l => l.id === id);
+            if (idx > 0) {
+                const temp = state.setlists[idx];
+                state.setlists[idx] = state.setlists[idx - 1];
+                state.setlists[idx - 1] = temp;
+                if (window.syncCloudData) window.syncCloudData();
+                if (window.renderSetlists) window.renderSetlists();
+            }
+        };
+
+        window.moveSetlistDown = function (id) {
+            const idx = state.setlists.findIndex(l => l.id === id);
+            if (idx > -1 && idx < state.setlists.length - 1) {
+                const temp = state.setlists[idx];
+                state.setlists[idx] = state.setlists[idx + 1];
+                state.setlists[idx + 1] = temp;
+                if (window.syncCloudData) window.syncCloudData();
+                if (window.renderSetlists) window.renderSetlists();
+            }
+        };
+
+        window.moveSongUpInSetlist = function (listId, songIdx) {
+            const list = state.setlists.find(l => l.id === listId);
+            if (list && songIdx > 0) {
+                const temp = list.songs[songIdx];
+                list.songs[songIdx] = list.songs[songIdx - 1];
+                list.songs[songIdx - 1] = temp;
+                if (window.syncCloudData) window.syncCloudData();
+                if (window.renderSetlists) window.renderSetlists();
+            }
+        };
+
+        window.moveSongDownInSetlist = function (listId, songIdx) {
+            const list = state.setlists.find(l => l.id === listId);
+            if (list && songIdx > -1 && songIdx < list.songs.length - 1) {
+                const temp = list.songs[songIdx];
+                list.songs[songIdx] = list.songs[songIdx + 1];
+                list.songs[songIdx + 1] = temp;
+                if (window.syncCloudData) window.syncCloudData();
+                if (window.renderSetlists) window.renderSetlists();
+            }
+        };
+
+        function toggleSetlist(listId) {
+            state.expandedSetlists[listId] = !state.expandedSetlists[listId];
+            if (window.renderSetlists) window.renderSetlists();
+        }
+
+        function addSongToSetlist(listId, songId) {
+            if (!songId) return;
+            const list = state.setlists.find(l => l.id === listId);
+            if (list && !list.songs.includes(songId)) {
+                list.songs.push(songId);
+                if (window.syncCloudData) window.syncCloudData();
+                if (window.renderSetlists) window.renderSetlists();
+            }
+        }
+
+        function removeSongFromSetlist(listId, songId) {
+            const list = state.setlists.find(l => l.id === listId);
+            if (list) {
+                list.songs = list.songs.filter(id => id !== songId);
+                if (window.syncCloudData) window.syncCloudData();
+                if (window.renderSetlists) window.renderSetlists();
+            }
+        }
+
+        window.openAddToSetlistModal = function (songId) {
+            const container = document.getElementById('availableSetlistsContainer');
+            container.innerHTML = '';
+
+            if (state.setlists.length === 0) {
+                container.innerHTML = '<div style="text-align:center; padding: 20px; color:#aaa;">لا توجد قوائم خدمة حالياً. قم بإنشاء قائمة أولاً من تبويب قوائم الخدمة.</div>';
+            } else {
+                state.setlists.forEach(list => {
+                    const isAlreadyAdded = list.songs.includes(songId);
+                    const btn = document.createElement('button');
+                    btn.className = isAlreadyAdded ? 'btn-secondary' : 'btn-primary';
+                    btn.style.cssText = 'width: 100%; justify-content: space-between; padding: 12px 20px; text-align: right; box-shadow: none; border: 1px solid var(--shadow-dark); background: var(--bg-color); border-radius: 12px; margin-bottom: 5px;';
+                    btn.disabled = isAlreadyAdded;
+                    if (isAlreadyAdded) btn.style.opacity = '0.5';
+
+                    btn.innerHTML = `
+                        <span style="font-weight: bold; font-family: inherit;">
+                            <i data-lucide="bookmark" style="width: 18px; display: inline-block; vertical-align: middle; margin-left: 5px;"></i> 
+                            ${list.name}
+                        </span>
+                        ${isAlreadyAdded ? '<span style="font-size: 0.8rem; color: #636e72;"><i data-lucide="check" style="width: 14px; margin-left: 3px;"></i> مضافة</span>' : '<i data-lucide="plus-circle" style="width: 18px; color: var(--primary-color);"></i>'}
+                    `;
+
+                    if (!isAlreadyAdded) {
+                        btn.onclick = () => confirmAddToSetlist(list.id, songId);
+                    }
+                    container.appendChild(btn);
+                });
+            }
+
+            const modal = document.getElementById('addToSetlistModalOverlay');
+            if (modal) modal.classList.add('active');
+            if (window.lucide) window.lucide.createIcons();
+        };
+
+        window.closeAddToSetlistModal = function () {
+            const modal = document.getElementById('addToSetlistModalOverlay');
+            if (modal) modal.classList.remove('active');
+        };
+
+        window.confirmAddToSetlist = function (listId, songId) {
+            if (!songId) return;
+            const list = state.setlists.find(l => l.id === listId);
+            if (list && !list.songs.includes(songId)) {
+                list.songs.push(songId);
+                if (window.syncCloudData) window.syncCloudData();
+                if (window.renderSetlists) window.renderSetlists();
+                if (window.showSaveStatus) window.showSaveStatus(`تم إضافة الترنيمة إلى "${list.name}" بنجاح 📋`);
+                closeAddToSetlistModal();
+            }
+        };
+
+        function togglePerformanceMode(activate) {
+            const lyricsEl = document.getElementById("lyrics");
+            if (!lyricsEl || !lyricsEl.value.trim()) {
+                alert("لا توجد كلمات لعزفها. اكتب ترنيمة أو افتح واحدة من المكتبة أولاً.");
+                return;
+            }
+            if (activate) {
+                document.body.classList.add('performance-mode');
+                window.scrollTo(0, 0);
+                if (state.activeSetlistSongs.length === 0) {
+                    const c = document.getElementById('setlistControlsContainer');
+                    if (c) c.style.display = 'none';
+                }
+                applyChords();
+            } else {
+                window.showDashboard();
+                document.body.classList.remove('performance-mode');
+                stopAutoScroll();
+                state.activeSetlistSongs = [];
+                applyChords();
+
+                // If exiting performance mode on a base library song, clear the workspace to prevent editing by regular users
+                if (state.editingMode === 'base' && !window.isAdmin()) {
+                    if (window.clearInputs) window.clearInputs(true);
+                }
+            }
+        }
+
+        function loadSongToEditor(id) {
+            const song = state.library.find(s => s.id === id) || state.baseLibrary.find(s => s.id === id);
+            if (!song) return;
+            if (window.applyAutosaveData) window.applyAutosaveData(song);
+            state.editingMode = state.library.some(s => s.id === id) ? 'private' : 'base';
+            state.history = [];
+            closeLibraryModal();
+        }
+
+        function playSetlist(listId) {
+            const list = state.setlists.find(l => l.id === listId);
+            if (!list || list.songs.length === 0) { alert("القائمة فارغة!"); return; }
+            state.activeSetlistSongs = list.songs; state.activeSetlistIndex = 0;
+
+            const c = document.getElementById('setlistControlsContainer');
+            if (c) c.style.display = 'flex';
+            closeLibraryModal();
+            window.showEditor();
+            loadSongToEditor(state.activeSetlistSongs[0]);
+            togglePerformanceMode(true);
+            updateSetlistButtons();
+        }
+
+        function navigateSetlist(direction) {
+            state.activeSetlistIndex += direction;
+            if (state.activeSetlistIndex < 0) state.activeSetlistIndex = 0;
+            if (state.activeSetlistIndex >= state.activeSetlistSongs.length) state.activeSetlistIndex = state.activeSetlistSongs.length - 1;
+
+            stopAutoScroll(); window.scrollTo(0, 0);
+            loadSongToEditor(state.activeSetlistSongs[state.activeSetlistIndex]);
+            updateSetlistButtons();
+            setTimeout(() => { applyChords(); }, 100);
+        }
+
+        function updateSetlistButtons() {
+            const prev = document.getElementById('btnPrevSong');
+            const next = document.getElementById('btnNextSong');
+            if (prev) {
+                prev.disabled = state.activeSetlistIndex === 0;
+                prev.style.opacity = state.activeSetlistIndex === 0 ? "0.3" : "1";
+            }
+            if (next) {
+                next.disabled = state.activeSetlistIndex === state.activeSetlistSongs.length - 1;
+                next.style.opacity = state.activeSetlistIndex === state.activeSetlistSongs.length - 1 ? "0.3" : "1";
+            }
+        }
+
+        function toggleAutoScroll() {
+            const btn = document.getElementById('btnAutoScroll');
+            if (!btn) return;
+            if (state.isScrolling) { stopAutoScroll(); }
+            else {
+                state.isScrolling = true;
+                btn.innerHTML = `<i data-lucide="pause" id="scrollIcon"></i> إيقاف`;
+                if (window.lucide) window.lucide.createIcons();
+                btn.classList.replace('btn-accent', 'btn-warning');
+
+                const tempoEl = document.getElementById('tempo');
+                const bpm = tempoEl ? (parseInt(tempoEl.value) || 0) : 0;
+                const speedEl = document.getElementById('scrollSpeed');
+                const speedInput = speedEl ? parseInt(speedEl.value) : 3;
+
+                let intervalTime;
+                if (bpm > 0) { intervalTime = (60000 / bpm) / (speedInput * 2); }
+                else { intervalTime = 120 - (speedInput * 10); }
+
+                state.scrollInterval = setInterval(() => {
+                    window.scrollBy({ top: 1, left: 0 });
+                    if (Math.ceil(window.innerHeight + window.scrollY) >= document.body.offsetHeight) {
+                        stopAutoScroll();
+                    }
+                }, intervalTime);
+            }
+        }
+
+        function stopAutoScroll() {
+            clearInterval(state.scrollInterval);
+            state.isScrolling = false;
+            const btn = document.getElementById('btnAutoScroll');
+            if (!btn) return;
+            btn.innerHTML = `<i data-lucide="play" id="scrollIcon"></i> تمرير تلقائي`;
+            if (window.lucide) window.lucide.createIcons();
+            btn.classList.replace('btn-warning', 'btn-accent');
+        }
+
+        window.safeDOM(() => {
+            const speedEl = document.getElementById('scrollSpeed');
+            if (speedEl) { speedEl.addEventListener('input', () => { if (state.isScrolling) { stopAutoScroll(); toggleAutoScroll(); } }); }
+        });
+
+        function handleNewSectionChange() {
+            const select = document.getElementById("newSectionType");
+            const input = document.getElementById("customSectionName");
+            if (select && input && select.value === "custom") {
+                select.style.display = "none";
+                input.style.display = "block";
+                input.focus();
+            }
+        }
+
+        function insertSectionHeader() {
+            const select = document.getElementById("newSectionType");
+            const input = document.getElementById("customSectionName");
+            if (!select || !input) return;
+            let val = select.value === "custom" ? input.value.trim() : select.value;
+
+            if (!val) { alert("الرجاء كتابة اسم القسم!"); return; }
+
+            saveToHistory();
+            const ta = document.getElementById("lyrics");
+            if (!ta) return;
+            const headerText = `#${val}`;
+
+            let insertIdx = ta.value.substring(0, ta.selectionStart).split('\n').length - 1;
+            const lines = ta.value.split('\n');
+
+            if (lines[insertIdx] !== undefined && lines[insertIdx].trim() !== '') {
+                insertIdx++;
+                lines.splice(insertIdx, 0, headerText);
+                state.lineIds.splice(insertIdx, 0, generateLineId());
+            } else { lines[insertIdx] = headerText; }
+
+            ta.value = lines.join('\n');
+
+            if (select.value === "custom") {
+                const newOpt = document.createElement("option");
+                newOpt.value = val; newOpt.text = val;
+                select.insertBefore(newOpt, select.querySelector('option[value="custom"]'));
+                select.style.display = "block"; input.style.display = "none";
+                select.value = val; input.value = "";
+            }
+
+            state.lastLines = ta.value.split('\n');
+            autoSave(); render(); showSaveStatus("تم إدراج العنوان!");
+        }
+
+        function copySection(start, end) {
+            const ta = document.getElementById("lyrics");
+            if (!ta) return;
+            const lines = ta.value.split('\n');
+
+            const sourceLines = lines.slice(start, end + 1);
+            const sourceChordsMap = {};
+
+            for (let i = start; i <= end; i++) {
+                const lineId = state.lineIds[i];
+                if (state.chordMap[lineId]) {
+                    sourceChordsMap[i - start] = JSON.parse(JSON.stringify(state.chordMap[lineId]));
+                }
+            }
+
+            state.copiedSection = { lines: sourceLines, chords: sourceChordsMap };
+
+            const btn = document.getElementById('pasteSectionBtn');
+            if (btn) btn.style.display = 'inline-flex';
+            showSaveStatus("تم نسخ القسم! ضع المؤشر في مربع النص واضغط لصق.");
+        }
+
+        function pasteCopiedSection() {
+            if (!state.copiedSection) return;
+            saveToHistory();
+            const ta = document.getElementById("lyrics");
+            if (!ta) return;
+            const lines = ta.value.split('\n');
+
+            let insertIdx = ta.value.substring(0, ta.selectionStart).split('\n').length - 1;
+            let replacingEmpty = false;
+
+            if (lines[insertIdx] !== undefined && lines[insertIdx].trim() !== '') { insertIdx++; }
+            else { replacingEmpty = true; }
+
+            const newIds = [];
+            for (let i = 0; i < state.copiedSection.lines.length; i++) { newIds.push(generateLineId()); }
+
+            for (const [offsetStr, chords] of Object.entries(state.copiedSection.chords)) {
+                const offset = parseInt(offsetStr);
+                state.chordMap[newIds[offset]] = JSON.parse(JSON.stringify(chords));
+            }
+
+            if (replacingEmpty) {
+                lines.splice(insertIdx, 1, ...state.copiedSection.lines);
+                state.lineIds.splice(insertIdx, 1, ...newIds);
+            } else {
+                lines.splice(insertIdx, 0, ...state.copiedSection.lines);
+                state.lineIds.splice(insertIdx, 0, ...newIds);
+            }
+
+            ta.value = lines.join('\n');
+            state.lastLines = ta.value.split('\n');
+
+            autoSave(); render(); showSaveStatus("تم لصق القسم بنجاح!"); ta.focus();
+        }
+
+        function handleLyricsInput() {
+            saveToHistory();
+            const textarea = document.getElementById("lyrics");
+            if (!textarea) return;
+            const newLines = textarea.value.split("\n");
+            const oldLines = state.lastLines || [];
+
+            if (newLines.length !== state.lineIds.length) {
+                let startMatch = 0;
+                while (startMatch < newLines.length && startMatch < oldLines.length && newLines[startMatch] === oldLines[startMatch]) { startMatch++; }
+
+                let endMatch = 0;
+                while (endMatch < newLines.length - startMatch && endMatch < oldLines.length - startMatch && newLines[newLines.length - 1 - endMatch] === oldLines[oldLines.length - 1 - endMatch]) { endMatch++; }
+
+                const removedCount = oldLines.length - startMatch - endMatch;
+                const addedCount = newLines.length - startMatch - endMatch;
+
+                const removedIds = state.lineIds.slice(startMatch, startMatch + removedCount);
+                const newIds = [];
+
+                for (let i = 0; i < addedCount; i++) {
+                    if (i < removedIds.length) { newIds.push(removedIds[i]); }
+                    else { newIds.push(generateLineId()); }
+                }
+
+                state.lineIds.splice(startMatch, removedCount, ...newIds);
+            }
+
+            state.lastLines = [...newLines];
+            autoSave(); render();
+        }
+
+        window.handleStateChange = function () { saveToHistory(); autoSave(); };
+
+        function autoSave() { } // Autocloud saving is triggered mostly manual now to save writes
+
+        function loadFromLocalStorage() {
+            const savedTheme = localStorage.getItem('taraneem_theme');
+            if (savedTheme === 'dark') {
+                state.isDarkMode = true;
+                document.documentElement.setAttribute('data-theme', 'dark');
+                const ti = document.getElementById('themeIcon');
+                if (ti) ti.setAttribute('data-lucide', 'sun');
+            }
+            const textarea = document.getElementById("lyrics");
+            if (textarea && state.lineIds.length === 0 && textarea.value) { state.lineIds = Array.from({ length: textarea.value.split("\n").length }, () => generateLineId()); }
+            if (textarea && state.lastLines.length === 0 && textarea.value) { state.lastLines = textarea.value.split("\n"); }
+        }
+
+        window.updatePreviewTitle = function () {
+            const t = document.getElementById('title');
+            const el = document.querySelector('.song-title');
+            if (el && t) el.innerText = t.value || "بدون عنوان";
+        };
+
+        window.updatePreviewKey = function () {
+            const keyEl = document.getElementById('key');
+            const tempoEl = document.getElementById('tempo');
+            const k = keyEl ? (keyEl.value || "-") : "-";
+            const bpm = tempoEl ? tempoEl.value : "";
+            const orig = state.originalKey || k;
+            const container = document.getElementById('previewMeta');
+
+            if (container) {
+                let keyHtml = "";
+                if (orig !== k && k !== "-" && orig) { keyHtml = `<span>المفتاح الحالي: <span style="direction: ltr; display: inline-block; font-weight:800; color:var(--primary-color); font-size:1.1em; margin: 0 4px;">${k}</span> <span style="font-size:0.85em; opacity:0.75; margin-right:8px;">(الأصلي: <span style="direction: ltr; display: inline-block;">${orig}</span>)</span></span>`; }
+                else { keyHtml = `<span>المفتاح: <span style="direction: ltr; display: inline-block; font-weight:bold;">${k}</span></span>`; }
+
+                let tempoHtml = bpm ? `<span style="margin-right:20px;"><i data-lucide="timer" style="width:16px;vertical-align:middle;"></i> السرعة: <span style="font-weight:bold;">${bpm} BPM</span></span>` : "";
+
+                container.innerHTML = keyHtml + tempoHtml;
+                if (window.lucide) window.lucide.createIcons();
+            }
+
+            const perfKeyDisplay = document.getElementById('perfKeyDisplay');
+            if (perfKeyDisplay) {
+                perfKeyDisplay.innerText = k;
+            }
+        };
+
+        function render() {
+            const lyricsEl = document.getElementById("lyrics");
+            const text = lyricsEl ? lyricsEl.value.trim() : "";
+            const titleEl = document.getElementById("title");
+            const titleVal = titleEl ? (titleEl.value || "بدون عنوان") : "بدون عنوان";
+            const previewContainer = document.getElementById("previewContent");
+
+            if (!previewContainer) return;
+
+            if (!text) {
+                previewContainer.innerHTML = `<div class="empty-state"><i data-lucide="file-music"></i><h3>مساحة العمل فارغة</h3><p>ابدأ بكتابة العنوان والكلمات في الأعلى لتظهر لك المعاينة هنا، ثم قم بتفعيل "إضافة كوردات" من الأعلى للبدء.</p></div>`;
+                if (window.lucide) window.lucide.createIcons();
+                return;
+            }
+
+            let headerHtml = `<div class="song-header" style="position: relative; margin-bottom: 0px;">
+            ${state.logoDataUrl ? `<img src="${state.logoDataUrl}" class="logo-display" style="position: absolute; top: 0; right: 0;">` : ''}
+            <div class="song-title">${titleVal}</div><div class="song-meta" id="previewMeta"></div></div>`;
+
+            let lyricsHtml = '<div class="lyrics-wrapper">';
+            const lines = text.split("\n");
+
+            let sections = []; let currentSection = null;
+            lines.forEach((line, i) => {
+                if (line.trim().startsWith("#")) {
+                    if (currentSection) currentSection.end = i - 1;
+                    currentSection = { start: i, end: lines.length - 1 };
+                    sections.push(currentSection);
+                }
+            });
+
+            lines.forEach((line, i) => {
+                const trimmed = line.trim();
+                const lineId = state.lineIds[i] || generateLineId();
+
+                if (trimmed.startsWith("#")) {
+                    const sec = sections.find(s => s.start === i);
+                    let copyIcon = "";
+                    if (sec) { copyIcon = `<i data-lucide="copy" class="copy-section-btn hide-on-export" onclick="copySection(${sec.start}, ${sec.end})" title="نسخ هذا القسم ولصقه في مكان آخر"></i>`; }
+                    lyricsHtml += `<div class="section-header">${trimmed.replace("#", "")} ${copyIcon}</div>`;
+                } else {
+                    lyricsHtml += `<div class="line" data-line-id="${lineId}" onpointerdown="handleLineClick(event, this)">${trimmed || '&nbsp;'}</div>`;
+                }
+            });
+            lyricsHtml += '</div>';
+            previewContainer.innerHTML = headerHtml + lyricsHtml;
+
+            window.updatePreviewKey(); applyChords();
+        }
+
+        function updateStyles(source = 'main') {
+            let fs, hfs, cs, ls, logoSz;
+
+            if (source === 'quick') {
+                fs = document.getElementById("quickFontSizeRange").value;
+                hfs = document.getElementById("quickHeaderFontSizeRange").value;
+                cs = document.getElementById("quickChordSizeRange").value;
+                ls = document.getElementById("quickLineSpacingRange").value;
+                logoSz = document.getElementById("quickLogoSizeRange").value;
+
+                document.getElementById("fontSizeRange").value = fs;
+                document.getElementById("headerFontSizeRange").value = hfs;
+                document.getElementById("chordSizeRange").value = cs;
+                document.getElementById("lineSpacingRange").value = ls;
+                document.getElementById("logoSizeRange").value = logoSz;
+            } else {
+                fs = document.getElementById("fontSizeRange").value;
+                hfs = document.getElementById("headerFontSizeRange").value;
+                cs = document.getElementById("chordSizeRange").value;
+                ls = document.getElementById("lineSpacingRange").value;
+                logoSz = document.getElementById("logoSizeRange").value;
+
+                document.getElementById("quickFontSizeRange").value = fs;
+                document.getElementById("quickHeaderFontSizeRange").value = hfs;
+                document.getElementById("quickChordSizeRange").value = cs;
+                document.getElementById("quickLineSpacingRange").value = ls;
+                document.getElementById("quickLogoSizeRange").value = logoSz;
+            }
+
+            document.getElementById("fontSizeVal").innerText = fs;
+            document.getElementById("headerFontSizeVal").innerText = hfs;
+            document.getElementById("chordSizeVal").innerText = cs;
+            document.getElementById("lineSpacingVal").innerText = ls;
+            document.getElementById("logoSizeVal").innerText = logoSz;
+
+            document.getElementById("quickFontSizeVal").innerText = fs;
+            document.getElementById("quickHeaderFontSizeVal").innerText = hfs;
+            document.getElementById("quickChordSizeVal").innerText = cs;
+            document.getElementById("quickLineSpacingVal").innerText = ls;
+            document.getElementById("quickLogoSizeVal").innerText = logoSz;
+
+            const container = document.getElementById("captureArea");
+            if (container) {
+                container.style.setProperty('--preview-font-size', fs + 'px');
+                container.style.setProperty('--header-font-size', hfs + 'px');
+                container.style.setProperty('--chord-size', cs + 'px');
+                container.style.setProperty('--line-spacing', ls + 'em');
+                container.style.setProperty('--logo-size', logoSz + 'px');
+            }
+            applyChords(); autoSave();
+        }
+
+        function handleLineClick(e, el) {
+            if (document.body.classList.contains('performance-mode') || !state.isEditMode) return;
+            if (e.target.classList.contains('chord') || e.target.closest('.copy-section-btn')) return;
+            if (!state.selectedChord) { alert("الرجاء اختيار كورد من القائمة الجانبية أولاً، ثم الضغط على الكلمة!"); return; }
+            saveToHistory();
+            const lineId = el.dataset.lineId; const rect = el.getBoundingClientRect();
+            const fontSize = parseFloat(window.getComputedStyle(el).fontSize) || 24;
+            const clientX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
+            const rightPx = rect.right - clientX; const rightEm = rightPx / fontSize;
+            if (!state.chordMap[lineId]) state.chordMap[lineId] = [];
+            state.chordMap[lineId].push({ chord: state.selectedChord, rightEm: rightEm });
+            applyChords(); autoSave();
+        }
+
+        function applyChords() {
+            document.querySelectorAll(".line").forEach(lineEl => {
+                lineEl.querySelectorAll(".chord").forEach(c => c.remove());
+                const lineId = lineEl.dataset.lineId;
+                const chords = state.chordMap[lineId];
+                if (!chords) return;
+                const fontSize = parseFloat(window.getComputedStyle(lineEl).fontSize) || 24;
+                const lineRect = lineEl.getBoundingClientRect();
+                chords.forEach((cData, arrayIdx) => {
+                    const span = document.createElement("span");
+                    span.className = "chord";
+                    let rightEm = cData.rightEm;
+                    if (rightEm === undefined) {
+                        let rightPx = 0;
+                        if (cData.rightPx !== undefined) { rightPx = cData.rightPx; }
+                        else if (cData.xPercent !== undefined) { rightPx = ((100 - cData.xPercent) / 100) * lineRect.width; }
+                        else if (cData.x !== undefined) { rightPx = lineRect.width - cData.x; }
+                        rightEm = rightPx / fontSize; cData.rightEm = rightEm;
+                    }
+                    span.style.right = `${rightEm * fontSize}px`;
+                    span.style.left = 'auto';
+                    span.innerText = cData.chord;
+                    span.onpointerdown = (e) => {
+                        if (document.body.classList.contains('performance-mode') || !state.isEditMode) return;
+                        e.stopPropagation();
+                        const currentTime = new Date().getTime();
+                        const tapLength = currentTime - (span.dataset.lastTap || 0);
+                        if (tapLength < 300 && tapLength > 0) { e.preventDefault(); saveToHistory(); state.chordMap[lineId].splice(arrayIdx, 1); applyChords(); autoSave(); return; }
+                        span.dataset.lastTap = currentTime;
+                        if (e.target.hasPointerCapture(e.pointerId)) { e.target.releasePointerCapture(e.pointerId); }
+                        state.dragging = { lineId: lineId, chordIdx: arrayIdx, el: lineEl, initialMouseX: e.clientX, initialRightEm: cData.rightEm, fontSize: fontSize };
+                    };
+                    span.oncontextmenu = (e) => {
+                        if (document.body.classList.contains('performance-mode') || !state.isEditMode) return;
+                        e.preventDefault(); e.stopPropagation(); saveToHistory(); state.chordMap[lineId].splice(arrayIdx, 1); applyChords(); autoSave();
+                    };
+                    lineEl.appendChild(span);
+                });
+            });
+            if (window.lucide) window.lucide.createIcons();
+        }
+
+        const handleDragMove = (e) => {
+            if (!state.dragging) return;
+            const d = state.dragging;
+            const clientX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
+            const deltaX = clientX - d.initialMouseX; const deltaEm = deltaX / d.fontSize;
+            let newRightEm = d.initialRightEm - deltaEm;
+            if (newRightEm < 0) newRightEm = 0;
+            state.chordMap[d.lineId][d.chordIdx].rightEm = newRightEm;
+            const span = d.el.querySelectorAll('.chord')[d.chordIdx];
+            if (span) { span.style.right = `${newRightEm * d.fontSize}px`; span.style.left = 'auto'; }
+        };
+
+        const handleDragEnd = () => { if (state.dragging) { saveToHistory(); autoSave(); state.dragging = null; } };
+        document.addEventListener("pointermove", handleDragMove); document.addEventListener("pointerup", handleDragEnd); document.addEventListener("pointercancel", handleDragEnd);
+        window.addEventListener('resize', () => { if (!state.dragging) applyChords(); });
+
+        function transposeAll(step) {
+            const keyInput = document.getElementById("key");
+            if (!keyInput) return;
+            if (Object.keys(state.chordMap).length === 0 && !keyInput.value) return;
+            saveToHistory();
+            let currentKeyStr = keyInput.value.trim();
+            if (currentKeyStr && !state.originalKey) { state.originalKey = currentKeyStr; }
+            let newKeyStr = currentKeyStr; let isTargetFlat = false;
+
+            if (currentKeyStr) {
+                const keyRootMatch = currentKeyStr.match(/^[A-G][b#]?/);
+                if (keyRootMatch) {
+                    const oldRootSharp = constants.enharmonicsToSharp[keyRootMatch[0]] || keyRootMatch[0];
+                    const oldIdx = constants.notesSharp.indexOf(oldRootSharp);
+                    if (oldIdx !== -1) {
+                        let newIdx = (((oldIdx + step) % 12) + 12) % 12;
+                        let tempNewRootSharp = constants.notesSharp[newIdx];
+                        const keySuffix = currentKeyStr.slice(keyRootMatch[0].length);
+                        const tempNewKeyContext = tempNewRootSharp + keySuffix;
+                        isTargetFlat = constants.flatKeys.some(fk => tempNewKeyContext.startsWith(fk) && (tempNewKeyContext === fk || tempNewKeyContext === fk + 'm'));
+                        let finalNewRoot = isTargetFlat ? constants.notesFlat[newIdx] : tempNewRootSharp;
+                        newKeyStr = finalNewRoot + keySuffix;
+                        keyInput.value = newKeyStr;
+                    }
+                }
+            }
+
+            Object.values(state.chordMap).forEach(list => {
+                list.forEach(cData => {
+                    const chordMatch = cData.chord.match(/^[A-G][b#]?/);
+                    if (chordMatch) {
+                        const rootSharp = constants.enharmonicsToSharp[chordMatch[0]] || chordMatch[0];
+                        const suffix = cData.chord.slice(chordMatch[0].length);
+                        const idx = constants.notesSharp.indexOf(rootSharp);
+                        if (idx !== -1) {
+                            let newIdx = (((idx + step) % 12) + 12) % 12;
+                            let newRoot = isTargetFlat ? constants.notesFlat[newIdx] : constants.notesSharp[newIdx];
+                            cData.chord = newRoot + suffix;
+                        }
+                    }
+                });
+            });
+            window.updatePreviewKey(); applyChords(); autoSave();
+        }
+
+        window.updateSuggestedChords = function () {
+            const keyEl = document.getElementById("key");
+            if (!keyEl) return;
+            let rawKey = keyEl.value.trim();
+            if (!rawKey) rawKey = "C";
+            let key = rawKey.charAt(0).toUpperCase() + rawKey.slice(1);
+            const container = document.getElementById("suggestedChords");
+            if (!container) return;
+            container.innerHTML = "";
+            let scaleToUse = constants.scales[key];
+            if (!scaleToUse) {
+                const match = key.match(/^[A-G][b#]?m?/);
+                if (match && constants.scales[match[0]]) { scaleToUse = constants.scales[match[0]]; }
+                else { scaleToUse = constants.scales["C"]; }
+            }
+            scaleToUse.forEach(c => {
+                const btn = document.createElement("button");
+                btn.className = "chord-btn"; btn.innerText = c;
+                btn.onclick = () => { state.selectedChord = c; document.querySelectorAll('.chord-btn').forEach(b => b.classList.remove('selected')); btn.classList.add('selected'); };
+                container.appendChild(btn);
+            });
+        };
+
+        function addNewChord() {
+            const el = document.getElementById("newChord");
+            if (!el || !el.value.trim()) return;
+            const val = el.value.trim();
+            const container = document.getElementById("suggestedChords");
+            const btn = document.createElement("button");
+            btn.className = "chord-btn"; btn.innerText = val;
+            btn.onclick = () => { state.selectedChord = val; document.querySelectorAll('.chord-btn').forEach(b => b.classList.remove('selected')); btn.classList.add('selected'); };
+            if (container) container.insertBefore(btn, container.firstChild);
+            btn.click(); el.value = "";
+        }
+
+        window.exportAsPDF = function () {
+            const previewContainer = document.getElementById("previewContent");
+            if (!previewContainer) return;
+
+            const modalInfoArea = document.getElementById("pdfPreviewContainer");
+            if (!modalInfoArea) return;
+
+            // استنساخ المحتوى لضبط المقاسات وتجنب تدمير الصفحة الرئيسية
+            const clone = previewContainer.cloneNode(true);
+            // تحديد العرض بالبكسل لضمان عدم تغير أماكن الكوردات
+            clone.style.width = previewContainer.offsetWidth + 'px';
+            clone.style.margin = '0 auto';
+            clone.style.padding = window.getComputedStyle(previewContainer).padding;
+            clone.style.background = 'white';
+            clone.style.color = '#333';
+            clone.style.fontFamily = "'Cairo', sans-serif";
+
+            // Fix html2canvas RTL/Absolute positioning bugs by transforming chords into inline ruby-like blocks for PDF layout
+            const originalLines = previewContainer.querySelectorAll('.line');
+            const clonedLines = clone.querySelectorAll('.line');
+
+            for (let i = 0; i < originalLines.length; i++) {
+                const originalChords = originalLines[i].querySelectorAll('.chord');
+                const clonedLine = clonedLines[i];
+
+                // Remove absolute chords from the print clone to prevent drifting
+                clonedLine.querySelectorAll('.chord').forEach(c => c.remove());
+
+                if (originalChords.length > 0) {
+                    clonedLine.style.position = 'relative';
+                    clonedLine.style.display = 'block';
+                    clonedLine.style.paddingTop = '1.7em'; // Make space for the absolute chords on top
+                    clonedLine.style.minHeight = '3.5em'; // Ensure the line has enough vertical space
+
+                    // Re-add chords explicitly tied to their pixel width relative to the line Container, which html2canvas respects when parent is block LTR/RTL
+                    originalChords.forEach(chord => {
+                        const newChord = document.createElement('span');
+                        newChord.innerText = chord.innerText;
+
+                        // Copy essential computed styles
+                        const compStyle = window.getComputedStyle(chord);
+                        newChord.style.position = 'absolute';
+                        newChord.style.color = compStyle.color;
+                        newChord.style.fontSize = compStyle.fontSize;
+                        newChord.style.fontWeight = compStyle.fontWeight;
+                        newChord.style.fontFamily = compStyle.fontFamily;
+                        newChord.style.top = '0'; // force it into the padding space
+
+                        // Strict positional freeze
+                        const lineRect = originalLines[i].getBoundingClientRect();
+                        const chordRect = chord.getBoundingClientRect();
+                        // From the right edge of the bounding box to bypass offsetLeft issues in RTL
+                        const fromRight = lineRect.right - chordRect.right;
+
+                        newChord.style.right = fromRight + 'px';
+                        newChord.style.left = 'auto';
+
+                        clonedLine.appendChild(newChord);
+                    });
+                }
+            }
+
+            modalInfoArea.innerHTML = '';
+            modalInfoArea.appendChild(clone);
+
+            const modal = document.getElementById('pdfPreviewModalOverlay');
+            if (modal) {
+                modal.classList.add('active');
+            }
+            if (window.lucide) window.lucide.createIcons();
+        };
+
+        window.handleLogoUpload = function (event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                state.logoDataUrl = e.target.result;
+                const logoName = document.getElementById("logoName");
+                if (logoName) logoName.innerText = `تم رفع الشعار: ${file.name}`;
+                event.target.value = ''; // Reset input to allow same file re-upload
+                render();
+                autoSave();
+            };
+            reader.readAsDataURL(file);
+        };
+
+        window.closePdfPreviewModal = function () {
+            const modal = document.getElementById('pdfPreviewModalOverlay');
+            if (modal) modal.classList.remove('active');
+        };
+
+        window.downloadPDF = function () {
+            const modalInfoArea = document.getElementById("pdfPreviewContainer");
+            if (!modalInfoArea) return;
+
+            const titleInput = document.getElementById("title");
+            const fileName = titleInput && titleInput.value.trim() !== "" ? titleInput.value.trim() : "taraneem-export";
+
+            const opt = {
+                margin: 10,
+                filename: `${fileName}.pdf`,
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: { scale: 2, useCORS: true },
+                jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+            };
+
+            const theClone = modalInfoArea.firstChild;
+            window.showSaveStatus("جاري إنشاء ملف الـ PDF...");
+
+            // إنشاء ملف PDF باستخدام المكتبة html2pdf.js
+            try {
+                html2pdf().set(opt).from(theClone).save().then(() => {
+                    window.showSaveStatus("تم تنزيل المستند بنجاح! 📄🎉");
+                    closePdfPreviewModal();
+                });
+            } catch (err) {
+                console.error("PDF generation error: ", err);
+                alert("تعذر تصدير الملف كـ PDF. الرجاء المحاولة مرة أخرى.");
+            }
+        };
+
+        function saveToHistory() { const snapshot = JSON.stringify(getCurrentEditorData()); state.history.push(snapshot); if (state.history.length > 50) state.history.shift(); }
+
+        function undo() {
+            if (state.history.length === 0) { window.showSaveStatus("لا يوجد إجراء للتراجع عنه"); return; }
+            const prev = state.history.pop();
+            window.applyAutosaveData(JSON.parse(prev));
+            window.showSaveStatus("تم التراجع بنجاح");
+        }
+
+        function clearInputs(force = false) {
+            if (force || confirm("هل أنت متأكد من تفريغ الخانات للبدء من جديد؟")) {
+                window.showEditor();
+                saveToHistory();
+                state.currentSongId = null; state.editingMode = 'private'; state.originalKey = "";
+                if (document.getElementById("title")) document.getElementById("title").value = "";
+                if (document.getElementById("key")) document.getElementById("key").value = "";
+                if (document.getElementById("tempo")) document.getElementById("tempo").value = "";
+                if (document.getElementById("lyrics")) document.getElementById("lyrics").value = "";
+                state.lastLines = []; state.lineIds = []; state.chordMap = {}; state.logoDataUrl = null;
+                const logoName = document.getElementById("logoName"); if (logoName) logoName.innerText = "";
+                render(); autoSave();
+                if (!force) window.showSaveStatus("تم مسح الحقول وبدء ترنيمة جديدة");
+            }
+        }
+
+        // ================= مشاركة قوائم الخدمة =================
+        window.shareSetlist = async function (listId) {
+            console.log("shareSetlist Triggered for list:", listId);
+            if (!window.activeAccount || !window.db) {
+                console.warn('Share aborted: No active account or DB not connected.', { activeAccount: window.activeAccount, db: !!window.db });
+                return alert('يجب تسجيل الدخول لاستخدام ميزة المشاركة الذكية.');
+            }
+            const list = state.setlists.find(l => l.id === listId);
+            if (!list || list.songs.length === 0) return alert('لا يمكن مشاركة قائمة فارغة.');
+
+            if (window.showSaveStatus) window.showSaveStatus("جاري تحضير الرابط...");
+
+            let payloadSongs = [];
+            for (const songId of list.songs) {
+                const baseSong = state.baseLibrary.find(s => s.id === songId);
+                const privSong = state.library.find(s => s.id === songId);
+
+                if (baseSong) {
+                    payloadSongs.push({ type: 'base', id: songId });
+                } else if (privSong) {
+                    payloadSongs.push({ type: 'private', data: privSong });
+                }
+            }
+
+            const shareData = {
+                name: list.name,
+                author: window.activeAccount,
+                songs: payloadSongs
+            };
+
+            const shareId = window.generateId().substring(0, 8);
+            // Firebase paths MUST have an even number of segments to target a document
+            // 6 segments compliant with security rules: artifacts/appId/public/data/taraneem_shared/shareId
+            const docRef = window.firebaseDoc(window.db, 'artifacts', window.appId, 'public', 'data', 'taraneem_shared', shareId);
+
+            try {
+                await window.firebaseSetDoc(docRef, {
+                    dataPayload: JSON.stringify(shareData),
+                    timestamp: Date.now()
+                });
+
+                let shareUrl = "";
+                if (window.location.protocol === 'file:') {
+                    shareUrl = window.location.href.split('?')[0] + '?share=' + shareId;
+                } else {
+                    shareUrl = window.location.origin + window.location.pathname + '?share=' + shareId;
+                }
+
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(shareUrl).then(() => {
+                        alert(`تم نسخ رابط المشاركة بنجاح! 📋\nيمكنك إرساله لأي شخص الآن:\n${shareUrl}`);
+                        if (window.showSaveStatus) window.showSaveStatus("");
+                    }).catch(e => {
+                        prompt("تعذر النسخ التلقائي. انسخ الرابط يدوياً:", shareUrl);
+                        if (window.showSaveStatus) window.showSaveStatus("");
+                    });
+                } else {
+                    // Fallback for file:// or non-secure contexts
+                    prompt("انسخ الرابط التالي لمشاركته (النسخ التلقائي غير مدعوم محلياً):", shareUrl);
+                    if (window.showSaveStatus) window.showSaveStatus("");
+                }
+
+            } catch (error) {
+                console.error("Share error:", error);
+                alert("حدث خطأ أثناء رفع القائمة للسحابة.");
+                if (window.showSaveStatus) window.showSaveStatus("");
+            }
+        };
+
+        window.checkSharedUrl = function () {
+            const urlParams = new URLSearchParams(window.location.search);
+            const shareId = urlParams.get('share');
+            if (shareId) {
+                // Wait if auto-login is in progress
+                if (!window.activeAccount && localStorage.getItem('taraneem_username')) {
+                    setTimeout(window.checkSharedUrl, 500);
+                    return;
+                }
+
+                // Remove parameter from URL to clean it
+                window.history.replaceState({}, document.title, window.location.pathname);
+
+                if (window.activeAccount) {
+                    window.processSharedSetlist(shareId);
+                } else {
+                    sessionStorage.setItem('pendingShareId', shareId);
+                    // Force the login menu so they can retrieve it
+                    document.getElementById('loginModalOverlay').style.display = 'flex';
+                    document.getElementById('loginErrorMsg').innerText = "لديك قائمة خدمة مرسلة لمكتبتك! يرجى الدخول لحفظها 🎁";
+                }
+            } else {
+                // Check if there is one lingering after login
+                const pendingId = sessionStorage.getItem('pendingShareId');
+                if (pendingId && window.activeAccount) {
+                    sessionStorage.removeItem('pendingShareId');
+                    window.processSharedSetlist(pendingId);
+                }
+            }
+        };
+
+        window.processSharedSetlist = async function (shareId) {
+            if (!window.db) {
+                // If DB isn't ready when page loads, wait a moment and try again
+                setTimeout(() => window.processSharedSetlist(shareId), 1000);
+                return;
+            }
+            const modal = document.getElementById('importSharedSetlistModalOverlay');
+            const msgEl = document.getElementById('importSharedSetlistMessage');
+            const loaderEl = document.getElementById('importSharedSetlistLoader');
+            const actionsEl = document.getElementById('importSharedSetlistActions');
+
+            if (modal) {
+                // Ensure no other modal is blocking it
+                const loginModal = document.getElementById('loginModalOverlay');
+                if (loginModal) loginModal.style.display = 'none';
+
+                modal.style.display = 'flex';
+                modal.style.zIndex = '99999'; // Ensure it's on top of everything
+                modal.style.opacity = '1';
+                modal.style.visibility = 'visible';
+                modal.style.background = 'rgba(0,0,0,0.85)';
+                modal.style.pointerEvents = 'auto';
+            }
+            msgEl.innerText = "جاري جلب القائمة من السحابة ذكياً... ☁️";
+            loaderEl.style.display = 'flex';
+            actionsEl.style.display = 'none';
+
+            try {
+                // 6 segments compliant with security rules: artifacts/appId/public/data/taraneem_shared/shareId
+                const docRef = window.firebaseDoc(window.db, 'artifacts', window.appId, 'public', 'data', 'taraneem_shared', shareId);
+                const snap = await window.firebaseGetDoc(docRef);
+
+                if (!snap.exists()) {
+                    msgEl.innerText = "عذراً، هذا الرابط غير صالح أو انتهت صلاحيته ❌";
+                    loaderEl.style.display = 'none';
+                    setTimeout(() => modal.style.display = 'none', 3000);
+                    return;
+                }
+
+                const data = JSON.parse(snap.data().dataPayload);
+                window.state.pendingImportList = data; // store temporarily
+
+                let privCount = data.songs.filter(s => s.type === 'private').length;
+                let baseCount = data.songs.filter(s => s.type === 'base').length;
+
+                msgEl.innerHTML = `
+                    يرسل إليك صديقك <b>${data.author}</b> قائمة الخدمة:<br>
+                    <strong style="color:var(--primary-color); font-size: 1.1rem; display:block; margin: 10px 0;">${data.name}</strong>
+                    تحتوي على: <br>
+                    - ${privCount} ترانيم خاصة (سيتم إضافتها لمكتبتك مع الكوردات والتنسيق)<br>
+                    - ${baseCount} ترانيم عادية (من المكتبة الأساسية)<br><br>
+                    هل توافق على إضافتها؟
+                `;
+
+                loaderEl.style.display = 'none';
+                actionsEl.style.display = 'flex';
+
+            } catch (error) {
+                console.error(error);
+                msgEl.innerText = "حدث خطأ أثناء تحميل القائمة المشتركة.";
+                loaderEl.style.display = 'none';
+                setTimeout(() => modal.style.display = 'none', 3000);
+            }
+        };
+
+        window.confirmImportSharedSetlist = async function () {
+            const data = window.state.pendingImportList;
+            if (!data) return;
+
+            const modal = document.getElementById('importSharedSetlistModalOverlay');
+            const msgEl = document.getElementById('importSharedSetlistMessage');
+            const actionsEl = document.getElementById('importSharedSetlistActions');
+            const loaderEl = document.getElementById('importSharedSetlistLoader');
+
+            actionsEl.style.display = 'none';
+            loaderEl.style.display = 'flex';
+            msgEl.innerText = "جاري دمج القائمة بسلام إلى مكتبتك... ⚙️";
+
+            let newListSongs = [];
+
+            // Process songs
+            for (const sp of data.songs) {
+                if (sp.type === 'base') {
+                    newListSongs.push(sp.id); // Base songs just keep their ID
+                } else if (sp.type === 'private' && sp.data) {
+                    // Reissue a new ID for the imported private song to avoid conflicts
+                    const importedSong = JSON.parse(JSON.stringify(sp.data));
+                    importedSong.id = window.generateId();
+
+                    // Add it to the local private library
+                    window.state.library.push(importedSong);
+                    newListSongs.push(importedSong.id);
+                }
+            }
+
+            const newList = {
+                id: window.generateId(),
+                name: data.name,
+                songs: newListSongs
+            };
+
+            window.state.setlists.push(newList);
+            window.state.expandedSetlists[newList.id] = true;
+
+            await window.syncCloudData();
+            if (window.renderLibraryList) window.renderLibraryList();
+            if (window.renderSetlists) window.renderSetlists();
+
+            window.state.pendingImportList = null;
+            msgEl.innerText = "هنيئاً لك! تم تحميل القائمة وإدراج الترانيم في مكتبتك بنجاح 🎉";
+            loaderEl.style.display = 'none';
+
+            setTimeout(() => {
+                modal.style.display = 'none';
+                if (!document.getElementById('libraryModal').classList.contains('active')) {
+                    if (window.openLibraryModal) window.openLibraryModal();
+                }
+            }, 2500);
+        };
+
+        window.cancelImportSharedSetlist = function () {
+            window.state.pendingImportList = null;
+            document.getElementById('importSharedSetlistModalOverlay').style.display = 'none';
+        };
+
+        // ربط أحداث الإدخال المتكررة بشكل آمن مع تعريف الدوال
+        window.safeDOM(() => {
+            setTimeout(() => { if (window.checkSharedUrl) window.checkSharedUrl(); }, 800);
+            document.querySelectorAll('input, select, textarea').forEach(el => {
+                if (el.id === 'lyrics') {
+                    el.addEventListener('input', handleLyricsInput);
+                } else if (el.id === 'title' || el.id === 'tempo') {
+                    el.addEventListener('input', () => { window.handleStateChange(); window.updatePreviewTitle(); window.updatePreviewKey(); });
+                } else if (el.id === 'key') {
+                    el.addEventListener('input', window.handleKeyInput);
+                }
+            });
+            window.showDashboard();
+        });
+
+        // Register Service Worker for PWA
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('sw.js').then(registration => {
+                    console.log('ServiceWorker registration successful with scope: ', registration.scope);
+                }, err => {
+                    console.log('ServiceWorker registration failed: ', err);
+                });
+            });
+        }
+
+        // Offline Status Monitor
+        window.updateOfflineIndicator = function () {
+            const ind = document.getElementById('offlineIndicator');
+            if (!ind) return;
+            if (!navigator.onLine) {
+                ind.style.display = 'inline-flex';
+                ind.style.alignItems = 'center';
+                if (window.lucide) window.lucide.createIcons();
+            } else {
+                ind.style.display = 'none';
+            }
+        };
+
+        window.addEventListener('online', () => {
+            window.updateOfflineIndicator();
+            window.showSaveStatus("أنت متصل بالإنترنت الآن 🟢. جاري المزامنة...");
+        });
+
+        window.addEventListener('offline', () => {
+            window.updateOfflineIndicator();
+            window.showSaveStatus("تم تفعيل وضع العمل بدون إنترنت 🔴. سيتم الحفظ محلياً.");
+        });
+
+        // Initial check on load
+        window.addEventListener('DOMContentLoaded', () => {
+            window.updateOfflineIndicator();
+        });
+    </script>
+</body>
+
+</html>

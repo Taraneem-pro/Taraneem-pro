@@ -1,0 +1,22 @@
+{
+  "name": "Taraneem Editor Pro",
+  "short_name": "TaraneemPro",
+  "description": "مكتبة ومحرر ترانيم متقدم يدعم العمل بدون إنترنت",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#171a21",
+  "theme_color": "#6c5ce7",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
