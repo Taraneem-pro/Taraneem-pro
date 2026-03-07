@@ -20,6 +20,8 @@ self.addEventListener('install', event => {
                 );
             })
     );
+    // Force the new Service Worker to activate immediately without waiting
+    self.skipWaiting();
 });
 
 self.addEventListener('fetch', event => {
@@ -73,6 +75,9 @@ self.addEventListener('activate', event => {
                     }
                 })
             );
+        }).then(() => {
+            // Take control of all open tabs immediately
+            return clients.claim();
         })
     );
 });
