@@ -1,7 +1,9 @@
 <!DOCTYPE html>
-<html lang="ar">
+<html lang="ar" data-theme="dark">
 
 <head>
+    <!-- Apply saved theme instantly before any render to prevent flash of wrong theme -->
+    <script>if (localStorage.getItem('taraneem_theme') === 'light') { document.documentElement.setAttribute('data-theme', 'light'); }</script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Taraneem Editor Pro - محرّر الترانيم</title>
@@ -2337,7 +2339,7 @@
             chordMap: {}, lineIds: [], lastLines: [], history: [],
             lineTexts: {},
             selectedChord: null, dragging: null, logoDataUrl: null,
-            isDarkMode: false, originalKey: "", tempo: "",
+            isDarkMode: true, originalKey: "", tempo: "",
             isEditMode: false, copiedSection: null, currentSongId: null,
             editingMode: 'private',
             library: [], baseLibrary: [], pendingRequests: [], setlists: [], expandedSetlists: {},
@@ -3375,7 +3377,14 @@
 
         function loadFromLocalStorage() {
             const savedTheme = localStorage.getItem('taraneem_theme');
-            if (savedTheme === 'dark') {
+            // Default is dark mode; only switch to light if the user explicitly chose light
+            if (savedTheme === 'light') {
+                state.isDarkMode = false;
+                document.documentElement.setAttribute('data-theme', 'light');
+                const ti = document.getElementById('themeIcon');
+                if (ti) ti.setAttribute('data-lucide', 'moon');
+            } else {
+                // Default: apply dark mode (covers 'dark' saved value and first-time visitors)
                 state.isDarkMode = true;
                 document.documentElement.setAttribute('data-theme', 'dark');
                 const ti = document.getElementById('themeIcon');
