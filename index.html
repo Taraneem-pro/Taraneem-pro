@@ -1889,6 +1889,14 @@
                                 style="padding: 8px 15px; display: none;" onclick="pasteCopiedSection()"><i
                                     data-lucide="clipboard-paste"></i> لصق القسم المنسوخ
                                 هنا</button>
+
+                            <div style="width: 2px; height: 20px; background: var(--shadow-dark); margin: 0 5px;"></div>
+
+                            <button id="btnSmartImport" class="btn-success"
+                                style="padding: 8px 15px; box-shadow: 0 4px 15px rgba(0, 184, 148, 0.4); border-radius: 12px; display: none;"
+                                onclick="document.getElementById('smartImportModal').classList.add('active')"
+                                title="استيراد الكلمات والكوردات الذكي"><i data-lucide="bot"></i>
+                                استيراد ذكي بالذكاء الاصطناعي</button>
                         </div>
                     </div>
                 </div>
@@ -2290,10 +2298,44 @@
         </div>
     </div>
 
+    <div id="smartImportModal" class="modal-overlay" style="z-index: 10001;">
+        <div
+            style="background: var(--bg-color); padding: 30px; border-radius: 20px; width: 90%; max-width: 600px; box-shadow: 8px 8px 20px var(--shadow-dark), -8px -8px 20px var(--shadow-light); display: flex; flex-direction: column;">
+            <div
+                style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 2px dashed var(--shadow-dark); padding-bottom: 15px;">
+                <h3
+                    style="margin: 0; color: var(--success); display: flex; align-items: center; gap: 10px; font-size: 1.3rem;">
+                    <i data-lucide="bot"></i> الاستيراد الذكي (من المستخرج)
+                </h3>
+                <button class="close-btn" style="width: 40px; height: 40px;"
+                    onclick="document.getElementById('smartImportModal').classList.remove('active')" title="إغلاق">
+                    <i data-lucide="x"></i>
+                </button>
+            </div>
+
+            <p style="font-size: 0.95rem; color: #636e72; margin-bottom: 15px; line-height: 1.6;">
+                قم بلصق النص الناتج من <b>أداة المستخرج الذكي للكوردات</b> في هذا المربع. سيقوم التطبيق بفك شفرة
+                الكوردات ووضعها في مكانها الصحيح تلقائياً.
+            </p>
+
+            <textarea id="smartImportText" placeholder="مثال:&#10;#القرار&#10;[C]يسوع [Am]بيحبك..."
+                style="height: 200px; margin-bottom: 20px; font-family: monospace;"></textarea>
+
+            <div style="display: flex; gap: 15px; justify-content: flex-end;">
+                <button class="btn-danger" style="padding: 10px 20px; border-radius: 12px;"
+                    onclick="document.getElementById('smartImportModal').classList.remove('active')" تلغاء</button>
+                    <button class="btn-success"
+                        style="padding: 10px 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0, 184, 148, 0.4);"
+                        onclick="processSmartImport()"><i data-lucide="wand-2"></i> استيراد و تطبيق</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         // التهيئة وإدارة الحالة الأساسية
         window.state = {
             chordMap: {}, lineIds: [], lastLines: [], history: [],
+            lineTexts: {},
             selectedChord: null, dragging: null, logoDataUrl: null,
             isDarkMode: false, originalKey: "", tempo: "",
             isEditMode: false, copiedSection: null, currentSongId: null,
@@ -2502,6 +2544,7 @@
                 const pendingTab = document.getElementById('pendingTabBtn');
                 const btnSaveBase = document.getElementById('btnSaveBase');
                 const dashbtnLogout = document.getElementById('dashbtnLogout');
+                const btnSmartImport = document.getElementById('btnSmartImport');
 
                 if (dashbtnLogout) {
                     dashbtnLogout.style.display = window.activeAccount ? 'flex' : 'none';
@@ -2510,9 +2553,11 @@
                 if (window.isAdmin()) {
                     if (pendingTab) pendingTab.style.display = 'block';
                     if (btnSaveBase) btnSaveBase.style.display = 'flex';
+                    if (btnSmartImport) btnSmartImport.style.display = 'flex';
                 } else {
                     if (pendingTab) pendingTab.style.display = 'none';
                     if (btnSaveBase) btnSaveBase.style.display = 'none';
+                    if (btnSmartImport) btnSmartImport.style.display = 'none';
                 }
                 if (window.lucide) window.lucide.createIcons();
             });
@@ -3185,32 +3230,144 @@
             const textarea = document.getElementById("lyrics");
             if (!textarea) return;
             const newLines = textarea.value.split("\n");
-            const oldLines = state.lastLines || [];
 
-            if (newLines.length !== state.lineIds.length) {
-                let startMatch = 0;
-                while (startMatch < newLines.length && startMatch < oldLines.length && newLines[startMatch] === oldLines[startMatch]) { startMatch++; }
-
-                let endMatch = 0;
-                while (endMatch < newLines.length - startMatch && endMatch < oldLines.length - startMatch && newLines[newLines.length - 1 - endMatch] === oldLines[oldLines.length - 1 - endMatch]) { endMatch++; }
-
-                const removedCount = oldLines.length - startMatch - endMatch;
-                const addedCount = newLines.length - startMatch - endMatch;
-
-                const removedIds = state.lineIds.slice(startMatch, startMatch + removedCount);
-                const newIds = [];
-
-                for (let i = 0; i < addedCount; i++) {
-                    if (i < removedIds.length) { newIds.push(removedIds[i]); }
-                    else { newIds.push(generateLineId()); }
+            // Ensure state.lastLines is always in sync before we compute the pool.
+            // If it's empty (first edit after page load or new song), build it from
+            // the current textarea value before the edit — which we can't recover here —
+            // so instead we just keep the lineIds matched by position for this one edit
+            // and subsequent edits will use the proper text-based pool.
+            if (!state.lastLines || state.lastLines.length === 0) {
+                // No history of old text available; fall back to position-based assignment
+                // to at least give each line a stable ID going forward.
+                if (state.lineIds.length !== newLines.length) {
+                    const diff = newLines.length - state.lineIds.length;
+                    if (diff > 0) {
+                        for (let i = 0; i < diff; i++) state.lineIds.push(generateLineId());
+                    } else {
+                        state.lineIds.splice(newLines.length);
+                    }
                 }
-
-                state.lineIds.splice(startMatch, removedCount, ...newIds);
+                state.lastLines = [...newLines];
+                autoSave(); render();
+                return;
             }
 
+            const oldLines = state.lastLines;
+
+            // TEXT-BASED lineId reconciliation:
+            // Build a pool of old lineIds keyed by text content (multi-map for duplicate lines).
+            // Each new line "claims" the old lineId of a line with the same text,
+            // so chords follow the text no matter what position the line moves to.
+            const oldLineIdPool = {};
+            oldLines.forEach((text, idx) => {
+                const key = text; // exact match (including spaces) to preserve intent
+                if (!oldLineIdPool[key]) oldLineIdPool[key] = [];
+                oldLineIdPool[key].push(state.lineIds[idx]);
+            });
+
+            const newLineIds = newLines.map(text => {
+                const key = text;
+                if (oldLineIdPool[key] && oldLineIdPool[key].length > 0) {
+                    return oldLineIdPool[key].shift(); // claim first available match
+                }
+                return generateLineId(); // brand new line
+            });
+
+            state.lineIds = newLineIds;
             state.lastLines = [...newLines];
             autoSave(); render();
         }
+
+        window.processSmartImport = function () {
+            const importText = document.getElementById("smartImportText").value;
+            if (!importText.trim()) {
+                alert("الرجاء لصق النص أولاً.");
+                return;
+            }
+
+            saveToHistory();
+
+            const lines = importText.split('\n');
+            const newLyrics = [];
+            const newChordMap = {};
+            const newLineIds = [];
+
+            // Regex to match [Chord] format
+            const chordRegex = /\[([A-G][A-Za-z0-9#b°ø+]*)\]/g;
+
+            lines.forEach((line) => {
+                const lineId = generateLineId();
+                newLineIds.push(lineId);
+
+                if (line.trim().startsWith('#')) {
+                    newLyrics.push(line.trim());
+                    return;
+                }
+
+                // To completely prevent freezing, we will NOT use regex with the `g` flag in a while loop.
+                // Instead, we will iteratively find the first '[' and matching ']'
+                let cleanLine = line;
+                const chordsOnLine = [];
+                let failsafe = 0;
+
+                while (cleanLine.includes('[') && cleanLine.includes(']') && failsafe < 100) {
+                    failsafe++;
+                    const startIndex = cleanLine.indexOf('[');
+                    const endIndex = cleanLine.indexOf(']', startIndex);
+
+                    if (endIndex > startIndex) {
+                        // Extract chord name
+                        const chordName = cleanLine.substring(startIndex + 1, endIndex);
+                        // Approximate position based on chars preceding it
+                        const rightEmEstimate = startIndex * 0.45;
+
+                        chordsOnLine.push({
+                            chord: chordName,
+                            rightEm: rightEmEstimate
+                        });
+
+                        // Remove the [Chord] bracket completely from the text
+                        cleanLine = cleanLine.substring(0, startIndex) + cleanLine.substring(endIndex + 1);
+                    } else {
+                        // Discard a malformed '[', prevent infinite loop
+                        cleanLine = cleanLine.substring(0, startIndex) + cleanLine.substring(startIndex + 1);
+                    }
+                }
+
+                newLyrics.push(cleanLine);
+                if (chordsOnLine.length > 0) {
+                    newChordMap[lineId] = chordsOnLine;
+                }
+            });
+
+            // Update state
+            const textarea = document.getElementById("lyrics");
+            if (textarea) {
+                // If textarea is not empty, append or replace? Let's just Replace for simplicity of Smart Import
+                textarea.value = newLyrics.join('\n');
+                state.lastLines = newLyrics;
+                state.lineIds = newLineIds;
+
+                // Merge or Replace chords? Replace.
+                state.chordMap = newChordMap;
+
+                // Close modal
+                document.getElementById('smartImportModal').classList.remove('active');
+                document.getElementById('smartImportText').value = '';
+
+                // Add imported chords to suggested chords pool
+                Object.values(newChordMap).forEach(chordList => {
+                    chordList.forEach(c => {
+                        // Check if it exists in the bar, if not we could technically add it, but suggestedChords gets reset by Key anyway.
+                    });
+                });
+
+                window.showSaveStatus("تم الاستيراد بنجاح! 🎉");
+
+                autoSave();
+                render();
+            }
+        };
 
         window.handleStateChange = function () { saveToHistory(); autoSave(); };
 
@@ -3373,6 +3530,9 @@
             const rightPx = rect.right - clientX; const rightEm = rightPx / fontSize;
             if (!state.chordMap[lineId]) state.chordMap[lineId] = [];
             state.chordMap[lineId].push({ chord: state.selectedChord, rightEm: rightEm });
+            // Store the text of this line so chords can follow it when text changes
+            if (!state.lineTexts) state.lineTexts = {};
+            state.lineTexts[lineId] = el.innerText.trim();
             applyChords(); autoSave();
         }
 
