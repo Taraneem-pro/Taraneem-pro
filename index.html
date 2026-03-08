@@ -3232,50 +3232,51 @@
             const textarea = document.getElementById("lyrics");
             if (!textarea) return;
             const newLines = textarea.value.split("\n");
+            const oldLines = state.lastLines || [];
 
-            // Ensure state.lastLines is always in sync before we compute the pool.
-            // If it's empty (first edit after page load or new song), build it from
-            // the current textarea value before the edit — which we can't recover here —
-            // so instead we just keep the lineIds matched by position for this one edit
-            // and subsequent edits will use the proper text-based pool.
-            if (!state.lastLines || state.lastLines.length === 0) {
-                // No history of old text available; fall back to position-based assignment
-                // to at least give each line a stable ID going forward.
-                if (state.lineIds.length !== newLines.length) {
-                    const diff = newLines.length - state.lineIds.length;
-                    if (diff > 0) {
-                        for (let i = 0; i < diff; i++) state.lineIds.push(generateLineId());
-                    } else {
-                        state.lineIds.splice(newLines.length);
+            // Build pools of old IDs keyed by text (for unchanged lines)
+            const oldIdPoolByText = {};
+            oldLines.forEach((text, idx) => {
+                if (!oldIdPoolByText[text]) oldIdPoolByText[text] = [];
+                oldIdPoolByText[text].push({ id: state.lineIds[idx], idx });
+            });
+
+            // Build a pool of old IDs keyed by position (for fallback / edited lines that had chords)
+            const oldIdByPos = oldLines.map((_, i) => state.lineIds[i] || null);
+
+            const newLineIds = [];
+            const usedIndices = new Set();
+
+            // First pass: claim IDs for exact-match lines (stable lines)
+            const tempIds = newLines.map(() => null);
+            newLines.forEach((text, ni) => {
+                if (oldIdPoolByText[text] && oldIdPoolByText[text].length > 0) {
+                    const entry = oldIdPoolByText[text].shift();
+                    if (!usedIndices.has(entry.idx)) {
+                        usedIndices.add(entry.idx);
+                        tempIds[ni] = entry.id;
                     }
                 }
-                state.lastLines = [...newLines];
-                autoSave(); render();
-                return;
-            }
-
-            const oldLines = state.lastLines;
-
-            // TEXT-BASED lineId reconciliation:
-            // Build a pool of old lineIds keyed by text content (multi-map for duplicate lines).
-            // Each new line "claims" the old lineId of a line with the same text,
-            // so chords follow the text no matter what position the line moves to.
-            const oldLineIdPool = {};
-            oldLines.forEach((text, idx) => {
-                const key = text; // exact match (including spaces) to preserve intent
-                if (!oldLineIdPool[key]) oldLineIdPool[key] = [];
-                oldLineIdPool[key].push(state.lineIds[idx]);
             });
 
-            const newLineIds = newLines.map(text => {
-                const key = text;
-                if (oldLineIdPool[key] && oldLineIdPool[key].length > 0) {
-                    return oldLineIdPool[key].shift(); // claim first available match
+            // Second pass: for lines that changed (no exact match), check if the old line at
+            // the same position had chords. If yes, KEEP the old lineId so chords survive.
+            // The chord's rightEm position will be preserved; the user can re-drag if needed.
+            newLines.forEach((text, ni) => {
+                if (tempIds[ni] !== null) return; // already claimed
+                const oldPosId = oldIdByPos[ni] || null;
+                if (oldPosId && !usedIndices.has(ni) && state.chordMap[oldPosId] && state.chordMap[oldPosId].length > 0) {
+                    // This line was edited but had chords — keep its ID so the chords survive
+                    tempIds[ni] = oldPosId;
+                    usedIndices.add(ni);
+                } else {
+                    // Truly new line or no chords to preserve
+                    tempIds[ni] = oldPosId || generateLineId();
+                    usedIndices.add(ni);
                 }
-                return generateLineId(); // brand new line
             });
 
-            state.lineIds = newLineIds;
+            state.lineIds = tempIds;
             state.lastLines = [...newLines];
             autoSave(); render();
         }
