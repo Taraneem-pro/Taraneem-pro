@@ -944,6 +944,10 @@
             align-items: center;
             border: 1px solid rgba(255, 255, 255, 0.1);
             color: white;
+            flex-wrap: wrap;
+            justify-content: center;
+            max-width: 95vw;
+            box-sizing: border-box;
         }
 
         body.performance-mode .perf-controls {
@@ -3337,22 +3341,31 @@
             if (!vv) return;
 
             const scale = vv.scale;
-            const invScale = 1 / scale;
 
-            // Counter-scale the bar so it stays the same physical size
-            bar.style.transform = `scale(${invScale})`;
-            bar.style.transformOrigin = 'bottom left';
+            // Only apply counter-scaling when actually zoomed in
+            if (scale > 1.05) {
+                const invScale = 1 / scale;
 
-            // Position it at the bottom of the visual viewport
-            // vv.offsetLeft/offsetTop give the offset of the visual viewport relative to the layout viewport
-            const bottomOffset = 8 * invScale; // small gap from bottom
-            bar.style.position = 'fixed';
-            bar.style.bottom = `${bottomOffset}px`;
+                // Counter-scale the bar so it stays the same physical size
+                bar.style.transform = `scale(${invScale})`;
+                bar.style.transformOrigin = 'bottom left';
 
-            // Adjust left and width so it fills the visible area correctly
-            const leftPx = vv.offsetLeft * scale;
-            bar.style.left = `${leftPx + 8}px`;
-            bar.style.width = `${vv.width - 16}px`;
+                // Position it at the bottom of the visual viewport
+                const bottomOffset = 8;
+                bar.style.bottom = `${bottomOffset}px`;
+
+                // Adjust left and width so it fills the visible area correctly
+                const leftPx = vv.offsetLeft * scale;
+                bar.style.left = `${leftPx + 8}px`;
+                bar.style.width = `${vv.width * scale - 16}px`;
+            } else {
+                // At default zoom, clear inline styles and let CSS handle layout
+                bar.style.transform = '';
+                bar.style.transformOrigin = '';
+                bar.style.bottom = '';
+                bar.style.left = '';
+                bar.style.width = '';
+            }
         }
 
         function togglePerformanceMode(activate) {
