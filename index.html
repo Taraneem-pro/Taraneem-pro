@@ -2809,9 +2809,11 @@
 
                     let songsHtml = '';
                     let displayNum = 1;
+                    let validSongCount = 0;
                     list.songs.forEach((songId, idx) => {
                         const song = state.library.find(s => s.id === songId) || state.baseLibrary.find(s => s.id === songId);
                         if (song) {
+                            validSongCount++;
                             const keyBadge = song.key ? `<span style="font-size:0.8rem; color:var(--primary-color); margin-right:8px; display:inline-block; direction:ltr;">[${song.key}]</span>` : '';
                             songsHtml += `<div style="display:flex; justify-content:space-between; align-items:center; font-size:0.95rem; padding:8px 10px; background:var(--bg-color); border-radius:8px; margin-bottom:5px;">
                                 <span style="display:flex; align-items:center;"><b>${displayNum++}.</b><span style="margin-right:8px; margin-left: 5px;">${song.title}</span> ${keyBadge} ${state.baseLibrary.find(s => s.id === songId) ? '<i data-lucide="shield-check" style="width:14px; color:#ff4757; margin-right:4px;" title="من الأساسية"></i>' : ''}</span>
@@ -2842,7 +2844,7 @@
                             <strong onclick="toggleSetlist('${list.id}')" style="cursor:pointer; color:var(--primary-color); font-size:1.2rem; display:flex; align-items:center; gap:8px; flex:1;">
                                 <i data-lucide="${chevronIcon}" style="width:20px; transition: transform 0.3s;"></i>
                                 <i data-lucide="bookmark"></i> ${list.name} 
-                                <span style="font-size:0.8rem; background:var(--bg-color); padding:2px 8px; border-radius:10px;">${list.songs.length}</span>
+                                <span style="font-size:0.8rem; background:var(--bg-color); padding:2px 8px; border-radius:10px;">${validSongCount}</span>
                             </strong>
                             <div style="display:flex; gap:8px;">
                                 ${state.setlists.indexOf(list) > 0 ? `<button class="btn-primary btn-icon" style="width: 32px; height: 32px; padding: 0; display: flex; align-items: center; justify-content: center; border-radius: 50%; box-shadow: 0 4px 10px rgba(0,0,0,0.15);" onclick="event.stopPropagation(); window.moveSetlistUp('${list.id}')"><i data-lucide="arrow-up" style="width:16px;"></i></button>` : ''}
@@ -3036,25 +3038,34 @@
 
         function loadSongToEditor(id) {
             const song = state.library.find(s => s.id === id) || state.baseLibrary.find(s => s.id === id);
-            if (!song) return;
+            if (!song) return false;
             if (window.applyAutosaveData) window.applyAutosaveData(song);
             state.editingMode = state.library.some(s => s.id === id) ? 'private' : 'base';
             state.history = [];
             closeLibraryModal();
+            return true;
         }
 
         function playSetlist(listId) {
             const list = state.setlists.find(l => l.id === listId);
             if (!list || list.songs.length === 0) { alert("القائمة فارغة!"); return; }
-            state.activeSetlistSongs = list.songs; state.activeSetlistIndex = 0;
+
+            // Filter to only songs that actually exist in either library
+            const validSongs = list.songs.filter(songId =>
+                state.library.find(s => s.id === songId) || state.baseLibrary.find(s => s.id === songId)
+            );
+            if (validSongs.length === 0) { alert("لا توجد ترانيم صالحة في هذه القائمة!"); return; }
+
+            state.activeSetlistSongs = validSongs; state.activeSetlistIndex = 0;
 
             const c = document.getElementById('setlistControlsContainer');
             if (c) c.style.display = 'flex';
-            closeLibraryModal();
             window.showEditor();
             loadSongToEditor(state.activeSetlistSongs[0]);
-            togglePerformanceMode(true);
-            updateSetlistButtons();
+            setTimeout(() => {
+                togglePerformanceMode(true);
+                updateSetlistButtons();
+            }, 50);
         }
 
         function navigateSetlist(direction) {
