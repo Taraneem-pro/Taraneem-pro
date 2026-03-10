@@ -1135,6 +1135,275 @@
                 color: #333;
             }
         }
+
+        /* ===== Mobile & Touch Responsiveness ===== */
+        @media (max-width: 768px) {
+            body {
+                padding-bottom: 80px;
+            }
+
+            .container {
+                padding: 10px;
+            }
+
+            h1 {
+                font-size: 1.6rem;
+            }
+
+            /* Hide text labels on toolbar buttons, show icons only */
+            .hide-mobile {
+                display: none !important;
+            }
+
+            /* Sticky toolbar compacting */
+            .sticky-toolbar {
+                padding: 8px 10px;
+                gap: 6px;
+                border-radius: 16px;
+                margin-bottom: 15px;
+                top: 5px;
+            }
+
+            .toolbar-group {
+                gap: 5px;
+            }
+
+            .sticky-toolbar button,
+            .sticky-toolbar .btn-icon {
+                padding: 8px;
+                font-size: 0.8rem;
+                min-height: 40px;
+                min-width: 40px;
+            }
+
+            .theme-toggle {
+                padding: 8px;
+                width: 40px;
+                height: 40px;
+            }
+
+            /* Editor tabs */
+            .editor-tabs {
+                gap: 8px;
+                padding: 6px;
+            }
+
+            .editor-tab-btn {
+                padding: 10px 12px;
+                font-size: 0.85rem;
+            }
+
+            /* Control panel */
+            .control-panel {
+                padding: 15px;
+                gap: 15px;
+                grid-template-columns: 1fr !important;
+            }
+
+            /* Preview container */
+            .preview-container {
+                padding: 15px 15px 30px 15px;
+                min-height: 400px;
+            }
+
+            /* Performance controls bar — FIT on mobile */
+            .perf-controls {
+                bottom: 8px;
+                padding: 8px 12px;
+                border-radius: 18px;
+                gap: 8px;
+                width: calc(100% - 16px);
+                left: 8px;
+                transform: none;
+                flex-wrap: wrap;
+                justify-content: center;
+                box-sizing: border-box;
+                max-height: 50vh;
+                overflow-y: auto;
+            }
+
+            .perf-controls button {
+                padding: 8px 12px;
+                font-size: 0.8rem;
+                min-height: 40px;
+            }
+
+            .perf-controls input[type="range"] {
+                width: 80px;
+            }
+
+            /* Performance mode preview */
+            body.performance-mode .preview-container {
+                padding: 40px 12px 120px 12px;
+            }
+
+            body.performance-mode #previewContent {
+                max-width: 100%;
+            }
+
+            /* Touch-action lock in performance mode */
+            body.performance-mode {
+                touch-action: pan-y;
+                -webkit-overflow-scrolling: touch;
+            }
+
+            /* Quick settings FAB + Panel */
+            .quick-settings-fab {
+                bottom: 15px;
+                left: 15px;
+                width: 48px;
+                height: 48px;
+            }
+
+            #quickSettingsPanel {
+                width: calc(100% - 20px) !important;
+                left: 10px !important;
+                bottom: 75px !important;
+                border-radius: 16px !important;
+            }
+
+            /* Tabs (dashboard) */
+            .tabs {
+                gap: 6px;
+                padding: 6px;
+            }
+
+            .tab-btn {
+                min-width: auto;
+                padding: 10px 8px;
+                font-size: 0.8rem;
+            }
+
+            /* List items — vertical stacking for touch */
+            .list-item {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 10px;
+                padding: 15px;
+            }
+
+            .list-item-actions {
+                justify-content: flex-start;
+                gap: 8px;
+            }
+
+            .list-item-actions button,
+            .list-item-actions .btn-icon {
+                min-height: 44px;
+                min-width: 44px;
+                padding: 10px;
+            }
+
+            /* Chords sidebar */
+            .chords-sidebar {
+                padding: 15px;
+            }
+
+            .chord-grid {
+                grid-template-columns: repeat(auto-fill, minmax(48px, 1fr));
+                gap: 8px;
+            }
+
+            .chord-btn {
+                padding: 10px 0;
+                font-size: 0.9rem;
+                min-height: 44px;
+            }
+
+            /* Login box */
+            .login-box {
+                padding: 25px;
+                width: 95%;
+            }
+
+            /* Range controls */
+            .range-control {
+                padding: 8px;
+                gap: 8px;
+            }
+
+            /* Section header buttons */
+            .copy-section-btn {
+                padding: 4px;
+            }
+
+            /* Cloud status in toolbar — smaller */
+            .sticky-toolbar [title="حالة الحفظ السحابي الآمن"] {
+                font-size: 0.75rem;
+                padding: 4px 10px;
+            }
+
+            /* Dashboard buttons row */
+            #dashboardView > div[style*="display: flex; gap: 10px; margin-bottom: 25px"] {
+                flex-direction: column;
+            }
+
+            #dashboardView > div[style*="display: flex; gap: 10px; margin-bottom: 25px"] button {
+                font-size: 1rem;
+            }
+        }
+
+        /* Extra small screens */
+        @media (max-width: 480px) {
+            h1 {
+                font-size: 1.3rem;
+            }
+
+            .sticky-toolbar {
+                padding: 6px 8px;
+                gap: 4px;
+                border-radius: 12px;
+            }
+
+            .sticky-toolbar button,
+            .sticky-toolbar .btn-icon {
+                padding: 6px;
+                min-height: 36px;
+                min-width: 36px;
+            }
+
+            .theme-toggle {
+                padding: 6px;
+                width: 36px;
+                height: 36px;
+            }
+
+            .editor-tab-btn {
+                padding: 8px 6px;
+                font-size: 0.78rem;
+                gap: 4px;
+            }
+
+            .perf-controls {
+                padding: 6px 8px;
+                gap: 6px;
+                border-radius: 14px;
+            }
+
+            .perf-controls button {
+                padding: 6px 8px;
+                font-size: 0.75rem;
+                min-height: 36px;
+            }
+
+            .perf-controls input[type="range"] {
+                width: 60px;
+            }
+
+            .tab-btn {
+                padding: 8px 4px;
+                font-size: 0.75rem;
+            }
+
+            .chord-grid {
+                grid-template-columns: repeat(auto-fill, minmax(42px, 1fr));
+                gap: 6px;
+            }
+
+            body.performance-mode .preview-container {
+                padding: 30px 8px 110px 8px;
+            }
+        }
     </style>
 
     <!-- تعريف الدوال العامة بطريقة آمنة لضمان عمل الأزرار حتى قبل اكتمال تحميل الصفحة -->
@@ -3014,8 +3283,12 @@
                 alert("لا توجد كلمات لعزفها. اكتب ترنيمة أو افتح واحدة من المكتبة أولاً.");
                 return;
             }
+            // Helper: lock/unlock viewport zoom for touch devices
+            const viewportMeta = document.querySelector('meta[name="viewport"]');
             if (activate) {
                 document.body.classList.add('performance-mode');
+                // Lock zoom on touch devices in performance mode
+                if (viewportMeta) viewportMeta.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no');
                 window.scrollTo(0, 0);
                 if (state.activeSetlistSongs.length === 0) {
                     const c = document.getElementById('setlistControlsContainer');
@@ -3025,6 +3298,8 @@
             } else {
                 window.showDashboard();
                 document.body.classList.remove('performance-mode');
+                // Restore normal zoom capability
+                if (viewportMeta) viewportMeta.setAttribute('content', 'width=device-width, initial-scale=1.0');
                 stopAutoScroll();
                 state.activeSetlistSongs = [];
                 applyChords();
