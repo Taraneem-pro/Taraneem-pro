@@ -1228,6 +1228,25 @@
                 min-height: 40px;
             }
 
+            /* Hide text labels in perf bar on mobile — icons only */
+            .perf-hide-mobile {
+                display: none !important;
+            }
+
+            .perf-controls #btnAutoScroll {
+                min-width: auto;
+            }
+
+            /* Setlist controls compact */
+            #setlistControlsContainer {
+                gap: 4px !important;
+            }
+
+            /* Remove dividers on mobile to save space */
+            .perf-controls .perf-divider {
+                display: none;
+            }
+
             .perf-controls input[type="range"] {
                 width: 80px;
             }
@@ -2400,9 +2419,9 @@
         <!-- شريط التحكم العائم في وضع العزف -->
         <div class="perf-controls" id="perfControls">
             <button class="btn-danger" onclick="togglePerformanceMode(false)" title="خروج من وضع العزف"><i
-                    data-lucide="x"></i> خروج</button>
+                    data-lucide="x"></i> <span class="perf-hide-mobile">خروج</span></button>
 
-            <div style="width: 1px; height: 30px; background: rgba(255,255,255,0.2); margin: 0 5px;"></div>
+            <div class="perf-divider" style="width: 1px; height: 30px; background: rgba(255,255,255,0.2); margin: 0 5px;"></div>
 
             <div style="display: flex; align-items: center; gap: 5px;">
                 <button onclick="transposeAll(-1)" title="خفض الطبقة"
@@ -2416,16 +2435,16 @@
             </div>
 
             <div id="setlistControlsContainer" style="display:none; align-items: center; gap: 10px;">
-                <div style="width: 1px; height: 30px; background: rgba(255,255,255,0.2); margin: 0 5px;"></div>
-                <button id="btnPrevSong" onclick="navigateSetlist(-1)"><i data-lucide="skip-back"></i> السابق</button>
-                <button id="btnNextSong" onclick="navigateSetlist(1)">التالي <i data-lucide="skip-forward"></i></button>
+                <div class="perf-divider" style="width: 1px; height: 30px; background: rgba(255,255,255,0.2); margin: 0 5px;"></div>
+                <button id="btnPrevSong" onclick="navigateSetlist(-1)"><i data-lucide="skip-back"></i> <span class="perf-hide-mobile">السابق</span></button>
+                <button id="btnNextSong" onclick="navigateSetlist(1)"><span class="perf-hide-mobile">التالي</span> <i data-lucide="skip-forward"></i></button>
             </div>
 
-            <div style="width: 1px; height: 30px; background: rgba(255,255,255,0.2); margin: 0 10px;"></div>
+            <div class="perf-divider" style="width: 1px; height: 30px; background: rgba(255,255,255,0.2); margin: 0 10px;"></div>
 
             <div style="display: flex; align-items: center; gap: 15px;">
                 <button class="btn-accent" id="btnAutoScroll" onclick="toggleAutoScroll()" style="min-width: 120px;"><i
-                        data-lucide="play" id="scrollIcon"></i> تمرير تلقائي</button>
+                        data-lucide="play" id="scrollIcon"></i> <span class="perf-hide-mobile">تمرير تلقائي</span></button>
                 <div style="display: flex; align-items: center; gap: 8px;">
                     <i data-lucide="turtle" style="width: 18px; opacity: 0.7;"></i>
                     <input type="range" id="scrollSpeed" min="1" max="10" value="3" title="سرعة التمرير">
@@ -3449,7 +3468,7 @@
             if (state.isScrolling) { stopAutoScroll(); }
             else {
                 state.isScrolling = true;
-                btn.innerHTML = `<i data-lucide="pause" id="scrollIcon"></i> إيقاف`;
+                btn.innerHTML = `<i data-lucide="pause" id="scrollIcon"></i> <span class="perf-hide-mobile">إيقاف</span>`;
                 if (window.lucide) window.lucide.createIcons();
                 btn.classList.replace('btn-accent', 'btn-warning');
 
@@ -3476,7 +3495,7 @@
             state.isScrolling = false;
             const btn = document.getElementById('btnAutoScroll');
             if (!btn) return;
-            btn.innerHTML = `<i data-lucide="play" id="scrollIcon"></i> تمرير تلقائي`;
+            btn.innerHTML = `<i data-lucide="play" id="scrollIcon"></i> <span class="perf-hide-mobile">تمرير تلقائي</span>`;
             if (window.lucide) window.lucide.createIcons();
             btn.classList.replace('btn-warning', 'btn-accent');
         }
