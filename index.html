@@ -1241,10 +1241,15 @@
                 max-width: 100%;
             }
 
-            /* Touch-action lock in performance mode */
+            /* Allow both scroll and pinch-zoom in performance mode */
             body.performance-mode {
-                touch-action: pan-y;
+                touch-action: manipulation;
                 -webkit-overflow-scrolling: touch;
+            }
+
+            /* Prevent the floating bar from intercepting touch gestures */
+            body.performance-mode .perf-controls {
+                touch-action: auto;
             }
 
             /* Quick settings FAB + Panel */
@@ -1402,6 +1407,34 @@
 
             body.performance-mode .preview-container {
                 padding: 30px 8px 110px 8px;
+            }
+        }
+
+        /* Landscape orientation — keep perf bar extra compact */
+        @media (max-height: 500px) and (orientation: landscape) {
+            .perf-controls {
+                padding: 5px 10px;
+                gap: 6px;
+                border-radius: 12px;
+                bottom: 5px;
+                flex-wrap: nowrap;
+                overflow-x: auto;
+                overflow-y: hidden;
+            }
+
+            .perf-controls button {
+                padding: 5px 10px;
+                font-size: 0.7rem;
+                min-height: 32px;
+                white-space: nowrap;
+            }
+
+            .perf-controls input[type="range"] {
+                width: 60px;
+            }
+
+            body.performance-mode .preview-container {
+                padding: 20px 10px 70px 10px;
             }
         }
     </style>
@@ -3277,29 +3310,72 @@
             }
         };
 
+        // === Visual Viewport handler: keeps perf-controls bar at constant size regardless of zoom ===
+        function updatePerfControlsPosition() {
+            const bar = document.getElementById('perfControls');
+            if (!bar || !document.body.classList.contains('performance-mode')) return;
+            const vv = window.visualViewport;
+            if (!vv) return;
+
+            const scale = vv.scale;
+            const invScale = 1 / scale;
+
+            // Counter-scale the bar so it stays the same physical size
+            bar.style.transform = `scale(${invScale})`;
+            bar.style.transformOrigin = 'bottom left';
+
+            // Position it at the bottom of the visual viewport
+            // vv.offsetLeft/offsetTop give the offset of the visual viewport relative to the layout viewport
+            const bottomOffset = 8 * invScale; // small gap from bottom
+            bar.style.position = 'fixed';
+            bar.style.bottom = `${bottomOffset}px`;
+
+            // Adjust left and width so it fills the visible area correctly
+            const leftPx = vv.offsetLeft * scale;
+            bar.style.left = `${leftPx + 8}px`;
+            bar.style.width = `${vv.width - 16}px`;
+        }
+
         function togglePerformanceMode(activate) {
             const lyricsEl = document.getElementById("lyrics");
             if (!lyricsEl || !lyricsEl.value.trim()) {
                 alert("لا توجد كلمات لعزفها. اكتب ترنيمة أو افتح واحدة من المكتبة أولاً.");
                 return;
             }
-            // Helper: lock/unlock viewport zoom for touch devices
-            const viewportMeta = document.querySelector('meta[name="viewport"]');
             if (activate) {
                 document.body.classList.add('performance-mode');
-                // Lock zoom on touch devices in performance mode
-                if (viewportMeta) viewportMeta.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no');
                 window.scrollTo(0, 0);
                 if (state.activeSetlistSongs.length === 0) {
                     const c = document.getElementById('setlistControlsContainer');
                     if (c) c.style.display = 'none';
                 }
                 applyChords();
+
+                // Attach visual viewport listeners so the bar stays zoom-independent
+                if (window.visualViewport) {
+                    window.visualViewport.addEventListener('resize', updatePerfControlsPosition);
+                    window.visualViewport.addEventListener('scroll', updatePerfControlsPosition);
+                    updatePerfControlsPosition();
+                }
             } else {
+                // Detach visual viewport listeners
+                if (window.visualViewport) {
+                    window.visualViewport.removeEventListener('resize', updatePerfControlsPosition);
+                    window.visualViewport.removeEventListener('scroll', updatePerfControlsPosition);
+                }
+
+                // Reset bar styles to CSS defaults
+                const bar = document.getElementById('perfControls');
+                if (bar) {
+                    bar.style.transform = '';
+                    bar.style.transformOrigin = '';
+                    bar.style.left = '';
+                    bar.style.bottom = '';
+                    bar.style.width = '';
+                }
+
                 window.showDashboard();
                 document.body.classList.remove('performance-mode');
-                // Restore normal zoom capability
-                if (viewportMeta) viewportMeta.setAttribute('content', 'width=device-width, initial-scale=1.0');
                 stopAutoScroll();
                 state.activeSetlistSongs = [];
                 applyChords();
