@@ -1,4 +1,3 @@
-// Version 1.7
 const CACHE_NAME = 'taraneem-pro-cache-v1';
 const urlsToCache = [
     './',
@@ -82,11 +81,3 @@ self.addEventListener('activate', event => {
         })
     );
 });
-
-
-
-
-
-
-
-

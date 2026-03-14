@@ -319,6 +319,17 @@
             color: #00b894;
         }
 
+        .btn-solid-success {
+            background: #00b894;
+            color: white;
+            box-shadow: 0 4px 15px rgba(0, 184, 148, 0.4);
+        }
+
+        .btn-solid-success:active {
+            background: #009475;
+            box-shadow: inset 2px 2px 5px rgba(0, 0, 0, 0.2);
+        }
+
         .btn-danger {
             color: #ff7675;
         }
@@ -2619,7 +2630,7 @@
             <div
                 style="display: flex; justify-content: flex-end; gap: 15px; margin-top: 20px; border-top: 1px solid var(--shadow-dark); padding-top: 15px;">
                 <button class="btn-danger" onclick="closePdfPreviewModal()"><i data-lucide="x"></i> إلغاء</button>
-                <button class="btn-success" onclick="downloadPDF()"><i data-lucide="download"></i> تنزيل كملف
+                <button class="btn-solid-success" onclick="downloadPDF()" style="padding: 12px 25px;"><i data-lucide="download"></i> تنزيل كملف
                     PDF</button>
             </div>
         </div>
@@ -4085,17 +4096,66 @@
             const modalInfoArea = document.getElementById("pdfPreviewContainer");
             if (!modalInfoArea) return;
 
-            // استنساخ المحتوى لضبط المقاسات وتجنب تدمير الصفحة الرئيسية
+            // خيار آمن: إنشاء حاوية مخفية مؤقتة بعرض ثابت لضمان دقة العمليات
+            const exportBuffer = document.createElement('div');
+            exportBuffer.style.position = 'absolute';
+            exportBuffer.style.left = '-10000px';
+            exportBuffer.style.top = '0';
+            exportBuffer.style.width = '794px'; // عرض A4 القياسي بـ 96dpi
+            document.body.appendChild(exportBuffer);
+
+            // استنساخ المحتوى إلى الحاوية المعزولة
             const clone = previewContainer.cloneNode(true);
-            // تحديد العرض بالبكسل لضمان عدم تغير أماكن الكوردات
-            clone.style.width = previewContainer.offsetWidth + 'px';
-            clone.style.margin = '0 auto';
-            clone.style.padding = window.getComputedStyle(previewContainer).padding;
+            exportBuffer.appendChild(clone);
+
+            // ضبط الكلون للعرض الثابت مع هوامش مريحة
+            clone.style.width = '794px';
+            clone.style.margin = '0';
+            clone.style.padding = '40px'; 
             clone.style.background = 'white';
             clone.style.color = '#333';
             clone.style.fontFamily = "'Cairo', sans-serif";
+            clone.style.boxSizing = 'border-box';
+            clone.style.display = 'block';
 
-            // Fix html2canvas RTL/Absolute positioning bugs by transforming chords into inline ruby-like blocks for PDF layout
+            // إصلاح الترويسة باستخدام Flexbox لمنع التداخل
+            const songHeader = clone.querySelector('.song-header');
+            if (songHeader) {
+                songHeader.style.display = 'flex';
+                songHeader.style.flexDirection = 'row-reverse'; // ليبدأ الشعار من اليمين
+                songHeader.style.justifyContent = 'space-between';
+                songHeader.style.alignItems = 'flex-start';
+                songHeader.style.gap = '20px';
+                songHeader.style.marginBottom = '20px';
+                songHeader.style.position = 'static';
+
+                const logo = songHeader.querySelector('.logo-display');
+                if (logo) {
+                    logo.style.position = 'static';
+                    logo.style.maxWidth = '100px';
+                    logo.style.maxHeight = '80px';
+                    logo.style.height = 'auto';
+                    logo.style.objectFit = 'contain';
+                    logo.style.order = '1';
+                }
+
+                const titleMetaContainer = document.createElement('div');
+                titleMetaContainer.style.flex = '1';
+                titleMetaContainer.style.textAlign = 'right';
+                titleMetaContainer.style.order = '2';
+
+                const titleEl = songHeader.querySelector('.song-title');
+                const metaEl = songHeader.querySelector('.song-meta');
+                
+                if (titleEl) titleMetaContainer.appendChild(titleEl);
+                if (metaEl) titleMetaContainer.appendChild(metaEl);
+                
+                // تنظيف الترويسة القديمة وإضافة الحاوية الجديدة
+                songHeader.innerHTML = '';
+                if (logo) songHeader.appendChild(logo);
+                songHeader.appendChild(titleMetaContainer);
+            }
+
             const originalLines = previewContainer.querySelectorAll('.line');
             const clonedLines = clone.querySelectorAll('.line');
 
@@ -4103,36 +4163,40 @@
                 const originalChords = originalLines[i].querySelectorAll('.chord');
                 const clonedLine = clonedLines[i];
 
-                // Remove absolute chords from the print clone to prevent drifting
                 clonedLine.querySelectorAll('.chord').forEach(c => c.remove());
 
                 if (originalChords.length > 0) {
                     clonedLine.style.position = 'relative';
                     clonedLine.style.display = 'block';
-                    clonedLine.style.paddingTop = '1.7em'; // Make space for the absolute chords on top
-                    clonedLine.style.minHeight = '3.5em'; // Ensure the line has enough vertical space
+                    clonedLine.style.paddingTop = '1.7em'; 
+                    clonedLine.style.minHeight = '3.5em'; 
 
-                    // Re-add chords explicitly tied to their pixel width relative to the line Container, which html2canvas respects when parent is block LTR/RTL
+                    const lineWidth = originalLines[i].offsetWidth;
+
                     originalChords.forEach(chord => {
                         const newChord = document.createElement('span');
                         newChord.innerText = chord.innerText;
-
-                        // Copy essential computed styles
+                        newChord.className = "chord";
+                        
                         const compStyle = window.getComputedStyle(chord);
+                        const lineRect = originalLines[i].getBoundingClientRect();
+                        const chordRect = chord.getBoundingClientRect();
+
                         newChord.style.position = 'absolute';
                         newChord.style.color = compStyle.color;
                         newChord.style.fontSize = compStyle.fontSize;
                         newChord.style.fontWeight = compStyle.fontWeight;
                         newChord.style.fontFamily = compStyle.fontFamily;
-                        newChord.style.top = '0'; // force it into the padding space
+                        newChord.style.top = '0';
+                        newChord.style.backgroundColor = 'transparent';
+                        newChord.style.boxShadow = 'none';
+                        newChord.style.transform = 'translateX(50%)'; // نرجع للـ CSS القياسي
 
-                        // Strict positional freeze
-                        const lineRect = originalLines[i].getBoundingClientRect();
-                        const chordRect = chord.getBoundingClientRect();
-                        // From the right edge of the bounding box to bypass offsetLeft issues in RTL
-                        const fromRight = lineRect.right - chordRect.right;
+                        // حساب الموقع كنسبة مئوية لضمان ثباته
+                        const rightPx = lineRect.right - (chordRect.left + chordRect.width / 2);
+                        const rightPercent = (rightPx / lineWidth) * 100;
 
-                        newChord.style.right = fromRight + 'px';
+                        newChord.style.right = rightPercent + '%';
                         newChord.style.left = 'auto';
 
                         clonedLine.appendChild(newChord);
@@ -4142,6 +4206,9 @@
 
             modalInfoArea.innerHTML = '';
             modalInfoArea.appendChild(clone);
+            
+            // تنظيف الحاوية المؤقتة
+            document.body.removeChild(exportBuffer);
 
             const modal = document.getElementById('pdfPreviewModalOverlay');
             if (modal) {
@@ -4172,32 +4239,54 @@
         };
 
         window.downloadPDF = function () {
+            if (typeof html2pdf === 'undefined') {
+                alert("تعذر تحميل مكتبة PDF. يرجى التأكد من اتصالك بالإنترنت.");
+                return;
+            }
+
             const modalInfoArea = document.getElementById("pdfPreviewContainer");
-            if (!modalInfoArea) return;
+            if (!modalInfoArea || !modalInfoArea.firstChild) {
+                alert("لا يوجد محتوى للتصدير.");
+                return;
+            }
 
             const titleInput = document.getElementById("title");
-            const fileName = titleInput && titleInput.value.trim() !== "" ? titleInput.value.trim() : "taraneem-export";
+            const rawFileName = titleInput && titleInput.value.trim() !== "" ? titleInput.value.trim() : "taraneem-export";
+            // Sanitize filename: remove problematic characters for Windows/Mobile
+            const fileName = rawFileName.replace(/[\\/:*?"<>|]/g, '_');
 
             const opt = {
-                margin: 10,
+                margin: 0, 
                 filename: `${fileName}.pdf`,
                 image: { type: 'jpeg', quality: 0.98 },
-                html2canvas: { scale: 2, useCORS: true },
+                html2canvas: { 
+                    scale: 3, 
+                    useCORS: true, 
+                    letterRendering: true,
+                    width: 794,
+                    logging: false
+                },
                 jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
             };
 
             const theClone = modalInfoArea.firstChild;
-            window.showSaveStatus("جاري إنشاء ملف الـ PDF...");
+            if (window.showSaveStatus) window.showSaveStatus("جاري تحضير الملف...");
 
-            // إنشاء ملف PDF باستخدام المكتبة html2pdf.js
             try {
+                // Ensure the clone is visible for html2canvas to work correctly
+                theClone.style.display = 'block';
+                theClone.style.visibility = 'visible';
+
                 html2pdf().set(opt).from(theClone).save().then(() => {
-                    window.showSaveStatus("تم تنزيل المستند بنجاح! 📄🎉");
-                    closePdfPreviewModal();
+                    if (window.showSaveStatus) window.showSaveStatus("تم التنزيل بنجاح! 📄🎉");
+                    setTimeout(closePdfPreviewModal, 1000);
+                }).catch(err => {
+                    console.error("PDF generation promise error: ", err);
+                    alert("حدث خطأ أثناء حفظ الملف: " + err.message);
                 });
             } catch (err) {
-                console.error("PDF generation error: ", err);
-                alert("تعذر تصدير الملف كـ PDF. الرجاء المحاولة مرة أخرى.");
+                console.error("PDF generation catch: ", err);
+                alert("حدث خطأ غير متوقع: " + err.message);
             }
         };
 
