@@ -7,7 +7,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Taraneem Editor Pro - محرّر الترانيم</title>
-    <!-- Google Fonts: Cairo for a modern Arabic look -->
+    <!-- Google Fonts: Cairo for Arabic and English (unified look) -->
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
     <!-- Lucide Icons & Export Tools -->
     <script src="https://unpkg.com/lucide@latest"></script>
@@ -16,39 +16,56 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <style>
         :root {
-            /* Light Theme (Default) */
-            --primary-color: #6c5ce7;
-            --secondary-color: #a29bfe;
-            --accent-color: #00cec9;
-            --bg-color: #e8eaed;
+            /* Light Theme - Clean & Appealing */
+            --primary-color: #0d9488;
+            --primary-hover: #0f766e;
+            --secondary-color: #14b8a6;
+            --accent-color: #0891b2;
+            --bg-color: #f0fdfa;
             --surface-color: #ffffff;
-            --text-color: #2d3436;
-            --chord-color: #d63031;
-            --border-radius: 16px;
+            --text-color: #134e4a;
+            --text-muted: #64748b;
+            --chord-color: #0d9488;
+            --font-en: 'Cairo', sans-serif;
+            --border-radius: 12px;
+            --radius-lg: 16px;
+            --radius-xl: 24px;
+            --spacing-xs: 0.25rem;
+            --spacing-sm: 0.5rem;
+            --spacing-md: 1rem;
+            --spacing-lg: 1.5rem;
+            --spacing-xl: 2rem;
 
-            /* 3D / Neumorphism Colors */
+            /* Shadows - softer, modern */
+            --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.07), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -4px rgba(0, 0, 0, 0.05);
             --shadow-light: #ffffff;
-            --shadow-dark: #d1d8e0;
-            --input-bg: #e8eaed;
+            --shadow-dark: #e2e8f0;
+            --input-bg: #f1f5f9;
 
-            --preview-chord-bg: rgba(255, 255, 255, 0.95);
+            --preview-chord-bg: rgba(255, 255, 255, 0.98);
             --logo-size: 180px;
-            /* للتحكم بحجم اللوجو */
         }
 
         /* Dark Theme overrides */
         [data-theme="dark"] {
-            --primary-color: #a29bfe;
-            --secondary-color: #6c5ce7;
-            --accent-color: #81ecec;
-            --bg-color: #2d3436;
-            --surface-color: #353b48;
-            --text-color: #dfe6e9;
-            --chord-color: #ff7675;
-            --shadow-light: #3b4453;
-            --shadow-dark: #1f2429;
-            --input-bg: #2d3436;
-            --preview-chord-bg: rgba(53, 59, 72, 0.8);
+            --primary-color: #2dd4bf;
+            --primary-hover: #5eead4;
+            --secondary-color: #14b8a6;
+            --accent-color: #22d3ee;
+            --bg-color: #0f172a;
+            --surface-color: #1e293b;
+            --text-color: #f0fdfa;
+            --text-muted: #94a3b8;
+            --chord-color: #2dd4bf;
+            --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -2px rgba(0, 0, 0, 0.2);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -4px rgba(0, 0, 0, 0.3);
+            --shadow-light: #334155;
+            --shadow-dark: #0c1222;
+            --input-bg: #0f172a;
+            --preview-chord-bg: rgba(30, 41, 59, 0.95);
         }
 
         /* ميزة التصدير */
@@ -59,18 +76,18 @@
         }
 
         .preview-container[data-exporting="true"] .song-title {
-            color: #6c5ce7 !important;
+            color: var(--primary-color) !important;
             letter-spacing: normal !important;
         }
 
         .preview-container[data-exporting="true"] .chord {
-            color: #d63031 !important;
+            color: var(--chord-color) !important;
             background: transparent !important;
         }
 
         .preview-container[data-exporting="true"] .song-meta {
-            color: #636e72 !important;
-            border-bottom-color: #f1f2f6 !important;
+            color: var(--text-muted) !important;
+            border-bottom-color: rgba(0,0,0,0.08) !important;
         }
 
         .preview-container[data-exporting="true"] .hide-on-export {
@@ -85,54 +102,60 @@
             color: var(--text-color);
             min-height: 100vh;
             transition: background-color 0.3s, color 0.3s;
-            padding-bottom: 120px;
+            padding-bottom: 7.5rem;
+            line-height: 1.6;
         }
 
         .container {
-            max-width: 1200px;
+            max-width: 72rem;
             margin: 0 auto;
-            padding: 20px;
+            padding: var(--spacing-xl);
             display: block;
-            gap: 20px;
+            gap: var(--spacing-xl);
             transition: all 0.3s;
         }
 
         header {
             text-align: center;
-            margin-bottom: 20px;
+            margin-bottom: var(--spacing-xl);
             position: relative;
-            padding-top: 20px;
+            padding-top: var(--spacing-xl);
         }
 
         h1 {
             color: var(--primary-color);
             margin: 0;
-            font-size: 2.2rem;
+            font-size: 2.25rem;
             font-weight: 800;
-            text-shadow: 2px 2px 4px var(--shadow-dark);
+            letter-spacing: -0.02em;
         }
 
         .subtitle {
-            font-size: 0.9rem;
-            font-weight: 600;
-            opacity: 0.7;
-            letter-spacing: 1px;
+            font-size: 1rem;
+            font-weight: 500;
+            color: var(--text-muted);
+            margin-top: var(--spacing-xs);
         }
 
         .sticky-toolbar {
             position: sticky;
-            top: 20px;
+            top: var(--spacing-md);
             z-index: 1000;
             background: var(--surface-color);
-            padding: 15px 25px;
-            border-radius: 50px;
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            padding: var(--spacing-md) var(--spacing-lg);
+            border-radius: var(--radius-xl);
+            box-shadow: var(--shadow-lg);
+            border: 1px solid rgba(0, 0, 0, 0.04);
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 30px;
+            margin-bottom: var(--spacing-xl);
             flex-wrap: wrap;
-            gap: 15px;
+            gap: var(--spacing-md);
+        }
+
+        [data-theme="dark"] .sticky-toolbar {
+            border-color: rgba(255, 255, 255, 0.06);
         }
 
         .toolbar-group {
@@ -144,12 +167,11 @@
         }
 
         .theme-toggle {
-            background: var(--bg-color);
-            border: none;
+            background: var(--input-bg);
+            border: 1px solid rgba(0, 0, 0, 0.06);
             cursor: pointer;
-            padding: 12px;
+            padding: var(--spacing-md);
             border-radius: 50%;
-            box-shadow: inset 3px 3px 6px var(--shadow-dark), inset -3px -3px 6px var(--shadow-light);
             color: var(--text-color);
             transition: all 0.2s ease;
             display: flex;
@@ -159,6 +181,12 @@
 
         .theme-toggle:hover {
             color: var(--primary-color);
+            background: var(--surface-color);
+            box-shadow: var(--shadow-sm);
+        }
+
+        [data-theme="dark"] .theme-toggle {
+            border-color: rgba(255, 255, 255, 0.08);
         }
 
         @keyframes spin {
@@ -173,33 +201,36 @@
 
         .editor-tabs {
             display: flex;
-            gap: 15px;
-            margin-bottom: 20px;
-            background: var(--bg-color);
-            padding: 10px;
-            border-radius: 20px;
-            box-shadow: inset 5px 5px 10px var(--shadow-dark), inset -5px -5px 10px var(--shadow-light);
+            gap: var(--spacing-sm);
+            margin-bottom: var(--spacing-lg);
+            background: var(--input-bg);
+            padding: var(--spacing-sm);
+            border-radius: var(--radius-lg);
         }
 
         .editor-tab-btn {
             flex: 1;
-            padding: 12px 20px;
+            padding: var(--spacing-md) var(--spacing-lg);
             text-align: center;
-            border-radius: 12px;
+            border-radius: var(--border-radius);
             cursor: pointer;
-            font-weight: 700;
-            color: var(--text-color);
-            transition: all 0.3s ease;
+            font-weight: 600;
+            color: var(--text-muted);
+            transition: all 0.2s ease;
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 8px;
+            gap: var(--spacing-sm);
+        }
+
+        .editor-tab-btn:hover {
+            color: var(--text-color);
         }
 
         .editor-tab-btn.active {
             background: var(--primary-color);
             color: white;
-            box-shadow: 0 4px 15px rgba(108, 92, 231, 0.4);
+            box-shadow: var(--shadow-md);
         }
 
         .editor-tab-content {
@@ -224,77 +255,101 @@
         }
 
         .control-panel {
-            background: var(--bg-color);
-            padding: 30px;
-            border-radius: var(--border-radius);
-            box-shadow: 8px 8px 20px var(--shadow-dark), -8px -8px 20px var(--shadow-light);
-            margin-bottom: 30px;
+            background: var(--surface-color);
+            padding: var(--spacing-xl);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-md);
+            border: 1px solid rgba(0, 0, 0, 0.04);
+            margin-bottom: var(--spacing-xl);
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 25px;
+            grid-template-columns: repeat(auto-fit, minmax(12.5rem, 1fr));
+            gap: var(--spacing-lg);
             align-items: start;
+        }
+
+        [data-theme="dark"] .control-panel {
+            border-color: rgba(255, 255, 255, 0.06);
         }
 
         .input-group {
             display: flex;
             flex-direction: column;
-            gap: 10px;
+            gap: var(--spacing-sm);
         }
 
         label {
-            font-size: 0.95rem;
-            font-weight: 700;
+            font-size: 0.9375rem;
+            font-weight: 600;
             color: var(--text-color);
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: var(--spacing-sm);
         }
 
         input,
         textarea,
         select {
             width: 100%;
-            padding: 15px 20px;
-            border: none;
-            border-radius: 12px;
+            padding: var(--spacing-md) var(--spacing-lg);
+            border: 1px solid rgba(0, 0, 0, 0.08);
+            border-radius: var(--border-radius);
             font-family: inherit;
             font-size: 1rem;
             box-sizing: border-box;
             background: var(--input-bg);
             color: var(--text-color);
-            box-shadow: inset 4px 4px 8px var(--shadow-dark), inset -4px -4px 8px var(--shadow-light);
-            transition: all 0.3s;
+            transition: all 0.2s;
+        }
+
+        [data-theme="dark"] input,
+        [data-theme="dark"] textarea,
+        [data-theme="dark"] select {
+            border-color: rgba(255, 255, 255, 0.1);
         }
 
         input:focus,
         textarea:focus {
             outline: none;
-            box-shadow: inset 6px 6px 12px var(--shadow-dark), inset -6px -6px 12px var(--shadow-light);
-            border-bottom: 2px solid var(--primary-color);
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.15);
+        }
+
+        [data-theme="dark"] input:focus,
+        [data-theme="dark"] textarea:focus {
+            box-shadow: 0 0 0 3px rgba(45, 212, 191, 0.2);
         }
 
         textarea {
-            height: 250px;
+            height: 15.625rem;
             resize: vertical;
-            line-height: 1.8;
+            line-height: 1.7;
+            min-height: 6.25rem;
         }
 
         button {
-            padding: 10px 20px;
-            font-size: 0.9rem;
+            padding: var(--spacing-md) var(--spacing-lg);
+            font-size: 0.9375rem;
             cursor: pointer;
-            border: none;
-            border-radius: 50px;
-            font-weight: 700;
+            border: 1px solid rgba(0, 0, 0, 0.06);
+            border-radius: var(--border-radius);
+            font-weight: 600;
             font-family: inherit;
             color: var(--text-color);
-            background: var(--bg-color);
-            box-shadow: 5px 5px 10px var(--shadow-dark), -5px -5px 10px var(--shadow-light);
+            background: var(--surface-color);
+            box-shadow: var(--shadow-sm);
             transition: all 0.2s ease;
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 8px;
+            gap: var(--spacing-md);
+        }
+
+        [data-theme="dark"] button {
+            border-color: rgba(255, 255, 255, 0.08);
+        }
+
+        button:hover {
+            box-shadow: var(--shadow-md);
         }
 
         button span {
@@ -302,80 +357,111 @@
         }
 
         button:active {
-            box-shadow: inset 3px 3px 6px var(--shadow-dark), inset -3px -3px 6px var(--shadow-light);
-            transform: translateY(2px);
+            transform: translateY(1px);
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
         }
 
         .btn-icon {
-            padding: 10px;
-            border-radius: 50%;
+            padding: var(--spacing-md);
+            border-radius: 14px;
+            gap: var(--spacing-sm);
+        }
+
+        .btn-icon i,
+        .btn-icon [data-lucide] {
+            width: 1.125rem;
+            height: 1.125rem;
+            margin: 0 var(--spacing-xs);
         }
 
         .btn-primary {
             color: var(--primary-color);
+            background: rgba(13, 148, 136, 0.1);
+            border-color: rgba(13, 148, 136, 0.2);
+        }
+
+        .btn-primary:hover {
+            background: rgba(13, 148, 136, 0.15);
+        }
+
+        [data-theme="dark"] .btn-primary {
+            background: rgba(45, 212, 191, 0.12);
+            border-color: rgba(45, 212, 191, 0.25);
+        }
+
+        [data-theme="dark"] .btn-primary:hover {
+            background: rgba(45, 212, 191, 0.18);
         }
 
         .btn-success {
-            color: #00b894;
+            color: #059669;
         }
 
         .btn-solid-success {
-            background: #00b894;
+            background: #059669;
             color: white;
-            box-shadow: 0 4px 15px rgba(0, 184, 148, 0.4);
+            border-color: transparent;
+            box-shadow: var(--shadow-md);
         }
 
-        .btn-solid-success:active {
-            background: #009475;
-            box-shadow: inset 2px 2px 5px rgba(0, 0, 0, 0.2);
+        .btn-solid-success:hover {
+            background: #047857;
         }
 
         .btn-danger {
-            color: #ff7675;
+            color: #dc2626;
+            background: rgba(220, 38, 38, 0.08);
+            border-color: rgba(220, 38, 38, 0.2);
+        }
+
+        .btn-danger:hover {
+            background: rgba(220, 38, 38, 0.12);
         }
 
         .btn-warning {
-            color: #fdcb6e;
+            color: #d97706;
         }
 
         .btn-solid-primary {
             background: var(--primary-color);
             color: white;
-            box-shadow: 0 4px 15px rgba(108, 92, 231, 0.4);
+            border-color: transparent;
+            box-shadow: var(--shadow-md);
         }
 
-        .btn-solid-primary:active {
-            background: #5a4bcf;
-            color: white;
-            box-shadow: inset 2px 2px 5px rgba(0, 0, 0, 0.2);
+        .btn-solid-primary:hover {
+            background: var(--primary-hover);
         }
 
         .btn-solid-warning {
-            background: #d35400;
+            background: #d97706;
             color: white;
-            box-shadow: 0 4px 15px rgba(211, 84, 0, 0.4);
+            border-color: transparent;
         }
 
         .btn-edit-mode {
-            background: var(--bg-color);
+            background: var(--input-bg);
             color: var(--text-color);
-            border: 2px solid transparent;
         }
 
         .btn-edit-mode.active {
             background: var(--primary-color);
             color: white;
-            box-shadow: inset 2px 2px 5px rgba(0, 0, 0, 0.2);
+            border-color: transparent;
         }
 
         .range-control {
             display: flex;
             align-items: center;
-            gap: 15px;
-            padding: 10px;
+            gap: var(--spacing-md);
+            padding: var(--spacing-md);
             background: var(--input-bg);
-            border-radius: 50px;
-            box-shadow: inset 3px 3px 6px var(--shadow-dark), inset -3px -3px 6px var(--shadow-light);
+            border-radius: var(--radius-lg);
+            border: 1px solid rgba(0, 0, 0, 0.06);
         }
 
         input[type="range"] {
@@ -440,10 +526,11 @@
         .preview-container {
             background: var(--surface-color);
             color: var(--text-color);
-            padding: 20px 40px 40px 40px;
-            border-radius: var(--border-radius);
-            box-shadow: 8px 8px 20px var(--shadow-dark), -8px -8px 20px var(--shadow-light);
-            min-height: 600px;
+            padding: var(--spacing-xl) 2.5rem;
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-lg);
+            border: 1px solid rgba(0, 0, 0, 0.04);
+            min-height: 37.5rem;
             position: relative;
             line-height: 1.8;
             transition: outline 0.3s, background-color 0.3s, color 0.3s;
@@ -505,21 +592,28 @@
 
         .song-meta {
             text-align: left;
-            margin-bottom: 0px;
+            margin-bottom: 0;
             font-size: calc(var(--header-font-size) * 0.45);
-            color: #636e72;
-            font-weight: 700;
+            color: var(--text-muted);
+            font-weight: 600;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            border-bottom: 2px dashed #dfe6e9;
-            padding-bottom: 10px;
+            border-bottom: 1px dashed rgba(0, 0, 0, 0.12);
+            padding-bottom: var(--spacing-md);
             line-height: 1.1;
         }
 
+        .song-meta .key-display,
+        #key,
+        #tempo,
+        #newChord,
+        #perfKeyDisplay {
+            font-family: var(--font-en);
+        }
+
         [data-theme="dark"] .song-meta {
-            border-bottom-color: #4b6584;
-            color: #a4b0be;
+            border-bottom-color: rgba(255, 255, 255, 0.15);
         }
 
         .logo-display {
@@ -552,7 +646,11 @@
         }
 
         .edit-mode-active .line:hover {
-            background: rgba(108, 92, 231, 0.08);
+            background: rgba(13, 148, 136, 0.08);
+        }
+
+        [data-theme="dark"] .edit-mode-active .line:hover {
+            background: rgba(45, 212, 191, 0.1);
         }
 
         .section-header {
@@ -584,7 +682,8 @@
             position: absolute;
             top: -1.8em;
             font-size: var(--chord-size);
-            font-weight: 800;
+            font-weight: 700;
+            font-family: var(--font-en);
             color: var(--chord-color);
             background: transparent;
             padding: 2px 4px;
@@ -610,14 +709,19 @@
 
         .chords-sidebar {
             background: var(--surface-color);
-            padding: 25px;
-            border-radius: var(--border-radius);
-            box-shadow: 8px 8px 20px var(--shadow-dark), -8px -8px 20px var(--shadow-light);
+            padding: var(--spacing-lg);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-md);
+            border: 1px solid rgba(0, 0, 0, 0.04);
             position: sticky;
-            top: 120px;
-            max-height: calc(100vh - 140px);
+            top: 7.5rem;
+            max-height: calc(100vh - 9rem);
             overflow-y: auto;
             scrollbar-width: thin;
+        }
+
+        [data-theme="dark"] .chords-sidebar {
+            border-color: rgba(255, 255, 255, 0.06);
         }
 
         .sidebar-section {
@@ -638,11 +742,11 @@
 
         .transpose-controls {
             display: flex;
-            gap: 15px;
-            background: var(--bg-color);
-            padding: 10px;
-            border-radius: 50px;
-            box-shadow: inset 3px 3px 6px var(--shadow-dark), inset -3px -3px 6px var(--shadow-light);
+            gap: var(--spacing-md);
+            background: var(--input-bg);
+            padding: var(--spacing-md);
+            border-radius: var(--radius-lg);
+            border: 1px solid rgba(0, 0, 0, 0.06);
         }
 
         .transpose-btn {
@@ -650,16 +754,11 @@
             justify-content: center;
             box-shadow: none;
             background: transparent;
-            padding: 5px;
+            padding: var(--spacing-sm);
         }
 
         .transpose-btn:hover {
             background: var(--surface-color);
-            box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.1);
-        }
-
-        .transpose-btn:active {
-            box-shadow: inset 2px 2px 5px rgba(0, 0, 0, 0.1);
         }
 
         .chord-grid {
@@ -669,22 +768,35 @@
         }
 
         .chord-btn {
-            padding: 12px 0;
-            border-radius: 12px;
-            font-weight: 800;
+            padding: var(--spacing-md) 0;
+            border-radius: var(--border-radius);
+            font-weight: 600;
+            font-family: var(--font-en);
             color: var(--text-color);
             text-align: center;
             justify-content: center;
             direction: ltr;
             font-size: 1rem;
-            background: var(--bg-color);
-            box-shadow: 4px 4px 8px var(--shadow-dark), -4px -4px 8px var(--shadow-light);
+            background: var(--input-bg);
+            border: 1px solid rgba(0, 0, 0, 0.06);
+            transition: all 0.2s;
+        }
+
+        .chord-btn:hover {
+            border-color: var(--primary-color);
+            color: var(--primary-color);
         }
 
         .chord-btn:active,
         .chord-btn.selected {
-            box-shadow: inset 4px 4px 8px var(--shadow-dark), inset -4px -4px 8px var(--shadow-light);
+            background: rgba(13, 148, 136, 0.15);
             color: var(--primary-color);
+            border-color: var(--primary-color);
+        }
+
+        [data-theme="dark"] .chord-btn:active,
+        [data-theme="dark"] .chord-btn.selected {
+            background: rgba(45, 212, 191, 0.2);
         }
 
         .custom-chord-input {
@@ -692,7 +804,8 @@
             margin-bottom: 15px;
             text-align: center;
             direction: ltr;
-            font-weight: bold;
+            font-weight: 600;
+            font-family: var(--font-en);
         }
 
         .modal-overlay {
@@ -703,12 +816,12 @@
             width: 100%;
             height: 100%;
             background: rgba(0, 0, 0, 0.5);
-            backdrop-filter: blur(5px);
+            backdrop-filter: blur(8px);
             z-index: 9999;
             justify-content: center;
             align-items: center;
             opacity: 0;
-            transition: opacity 0.3s;
+            transition: opacity 0.25s ease;
         }
 
         .modal-overlay.active {
@@ -718,7 +831,7 @@
 
         .modal-content {
             background: var(--bg-color);
-            padding: 40px 5%;
+            padding: 2.5rem 5%;
             border-radius: 0;
             width: 100vw;
             height: 100vh;
@@ -727,81 +840,85 @@
             overflow-y: auto;
             box-sizing: border-box;
             border: none;
-            box-shadow: none;
-        }
-
-        [data-theme="dark"] .modal-content {
-            border: none;
-            box-shadow: none;
         }
 
         .modal-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 25px;
-            padding-bottom: 15px;
-            border-bottom: 2px dashed var(--shadow-dark);
+            margin-bottom: var(--spacing-lg);
+            padding-bottom: var(--spacing-md);
+            border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+        }
+
+        [data-theme="dark"] .modal-header {
+            border-color: rgba(255, 255, 255, 0.08);
         }
 
         .modal-title {
             font-size: 1.5rem;
-            font-weight: 800;
+            font-weight: 700;
             color: var(--primary-color);
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: var(--spacing-md);
         }
 
         .close-btn {
             background: var(--input-bg);
-            width: 45px;
-            height: 45px;
+            width: 2.75rem;
+            height: 2.75rem;
             border-radius: 50%;
             display: flex;
             justify-content: center;
             align-items: center;
-            color: #ff7675;
-            border: none;
+            color: #dc2626;
+            border: 1px solid rgba(0, 0, 0, 0.06);
             cursor: pointer;
-            box-shadow: 4px 4px 8px var(--shadow-dark), -4px -4px 8px var(--shadow-light);
             transition: all 0.2s;
             padding: 0;
         }
 
         .close-btn:hover {
-            color: #d63031;
-            transform: scale(1.1);
-            box-shadow: inset 4px 4px 8px var(--shadow-dark), inset -4px -4px 8px var(--shadow-light);
+            color: #b91c1c;
+            background: rgba(220, 38, 38, 0.1);
+        }
+
+        #dashCloudStatus:hover {
+            background: var(--surface-color);
+            box-shadow: var(--shadow-sm);
         }
 
         .tabs {
             display: flex;
-            gap: 15px;
-            margin-bottom: 25px;
+            gap: var(--spacing-sm);
+            margin-bottom: var(--spacing-lg);
             background: var(--input-bg);
-            padding: 8px;
-            border-radius: 16px;
-            box-shadow: inset 4px 4px 8px var(--shadow-dark), inset -4px -4px 8px var(--shadow-light);
+            padding: var(--spacing-sm);
+            border-radius: var(--radius-lg);
             flex-wrap: wrap;
         }
 
         .tab-btn {
             flex: 1;
-            min-width: 150px;
-            padding: 12px;
-            border-radius: 12px;
+            min-width: 9.375rem;
+            padding: var(--spacing-md);
+            border-radius: var(--border-radius);
             justify-content: center;
-            font-weight: 700;
-            color: var(--text-color);
-            box-shadow: none;
+            font-weight: 600;
+            color: var(--text-muted);
+            transition: all 0.2s;
             background: transparent;
+        }
+
+        .tab-btn:hover {
+            color: var(--text-color);
         }
 
         .tab-btn.active {
             background: var(--surface-color);
             color: var(--primary-color);
-            box-shadow: 4px 4px 8px rgba(0, 0, 0, 0.05);
+            box-shadow: var(--shadow-sm);
         }
 
         .tab-content {
@@ -813,45 +930,120 @@
             display: block;
         }
 
+        /* Scrollable list containers - QoL */
+        .scroll-list {
+            max-height: 60vh;
+            overflow-y: auto;
+            overflow-x: hidden;
+            padding: var(--spacing-sm);
+            border-radius: var(--border-radius);
+            scrollbar-width: thin;
+            scrollbar-color: var(--accent-color) var(--input-bg);
+        }
+
+        .scroll-list::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .scroll-list::-webkit-scrollbar-track {
+            background: var(--input-bg);
+            border-radius: 4px;
+        }
+
+        .scroll-list::-webkit-scrollbar-thumb {
+            background: var(--accent-color);
+            border-radius: 4px;
+        }
+
+        .scroll-list::-webkit-scrollbar-thumb:hover {
+            background: var(--primary-color);
+        }
+
+        /* Global scrollbar styling */
+        .chords-sidebar::-webkit-scrollbar,
+        #availableSetlistsContainer::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .chords-sidebar::-webkit-scrollbar-track,
+        #availableSetlistsContainer::-webkit-scrollbar-track {
+            background: var(--input-bg);
+            border-radius: 4px;
+        }
+
+        .chords-sidebar::-webkit-scrollbar-thumb,
+        #availableSetlistsContainer::-webkit-scrollbar-thumb {
+            background: var(--accent-color);
+            border-radius: 4px;
+        }
+
+        .chords-sidebar::-webkit-scrollbar-thumb:hover,
+        #availableSetlistsContainer::-webkit-scrollbar-thumb:hover {
+            background: var(--primary-color);
+        }
+
         .list-item {
             background: var(--surface-color);
-            padding: 20px;
-            border-radius: 16px;
-            margin-bottom: 15px;
+            padding: var(--spacing-lg);
+            border-radius: var(--radius-lg);
+            margin-bottom: var(--spacing-md);
             display: flex;
             justify-content: space-between;
             align-items: center;
-            box-shadow: 4px 4px 10px var(--shadow-dark), -4px -4px 10px var(--shadow-light);
-            transition: transform 0.2s;
+            box-shadow: var(--shadow-sm);
+            border: 1px solid rgba(0, 0, 0, 0.04);
+            transition: all 0.2s;
+        }
+
+        [data-theme="dark"] .list-item {
+            border-color: rgba(255, 255, 255, 0.06);
         }
 
         .list-item:hover {
-            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
         }
 
         .list-item-info strong {
             display: block;
-            font-size: 1.2rem;
+            font-size: 1.125rem;
             color: var(--text-color);
-            margin-bottom: 5px;
+            margin-bottom: var(--spacing-xs);
         }
 
         .list-item-info span {
-            font-size: 0.9rem;
+            font-size: 0.875rem;
             color: var(--primary-color);
-            font-weight: 700;
-            background: var(--bg-color);
-            padding: 4px 10px;
+            font-weight: 600;
+            background: rgba(13, 148, 136, 0.1);
+            padding: var(--spacing-xs) var(--spacing-md);
             border-radius: 50px;
             display: inline-block;
-            margin-bottom: 5px;
+            font-family: var(--font-en);
+        }
+
+        [data-theme="dark"] .list-item-info span {
+            background: rgba(45, 212, 191, 0.15);
         }
 
         .list-item-actions {
             display: flex;
-            gap: 10px;
+            gap: var(--spacing-md);
             flex-wrap: wrap;
             justify-content: flex-end;
+            align-items: center;
+        }
+
+        .list-item-actions .btn-icon {
+            padding: var(--spacing-sm) var(--spacing-md);
+            min-width: 2.5rem;
+            min-height: 2.5rem;
+            border-radius: 14px;
+        }
+
+        .list-item-actions .btn-icon i,
+        .list-item-actions .btn-icon [data-lucide] {
+            width: 1.125rem;
+            height: 1.125rem;
         }
 
         body.performance-mode {
@@ -894,7 +1086,7 @@
         }
 
         body.performance-mode .song-title {
-            color: #a29bfe !important;
+            color: #2dd4bf !important;
             font-size: calc(var(--header-font-size) * 1.2);
         }
 
@@ -904,12 +1096,12 @@
         }
 
         body.performance-mode .section-header {
-            color: #ffeaa7 !important;
-            border-bottom-color: #ffeaa7 !important;
+            color: #5eead4 !important;
+            border-bottom-color: #5eead4 !important;
         }
 
         body.performance-mode .chord {
-            color: #fdcb6e !important;
+            color: #5eead4 !important;
             background: transparent !important;
             font-size: calc(var(--chord-size) * 1.1) !important;
             text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
@@ -1006,23 +1198,24 @@
 
         #saveStatus {
             position: fixed;
-            bottom: 30px;
-            right: 30px;
+            bottom: var(--spacing-xl);
+            right: var(--spacing-xl);
             left: auto;
             background: var(--surface-color);
-            padding: 12px 25px;
-            border-radius: 50px;
-            font-weight: bold;
+            padding: var(--spacing-md) var(--spacing-lg);
+            border-radius: var(--radius-xl);
+            font-weight: 600;
             color: var(--primary-color);
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+            box-shadow: var(--shadow-lg);
+            border: 1px solid rgba(0, 0, 0, 0.04);
             opacity: 0;
-            transform: translateY(20px);
-            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            transform: translateY(1.25rem);
+            transition: all 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
             pointer-events: none;
             z-index: 9999;
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: var(--spacing-md);
         }
 
         #saveStatus.show {
@@ -1046,34 +1239,39 @@
         }
 
         .login-box {
-            background: var(--bg-color);
-            padding: 40px;
-            border-radius: var(--border-radius);
-            box-shadow: 15px 15px 30px rgba(0, 0, 0, 0.2), -15px -15px 30px rgba(255, 255, 255, 0.1);
+            background: var(--surface-color);
+            padding: var(--spacing-xl);
+            border-radius: var(--radius-xl);
+            box-shadow: var(--shadow-lg);
+            border: 1px solid rgba(0, 0, 0, 0.06);
             width: 90%;
-            max-width: 400px;
+            max-width: 25rem;
             text-align: center;
+        }
+
+        [data-theme="dark"] .login-box {
+            border-color: rgba(255, 255, 255, 0.08);
         }
 
         .login-box h2 {
             color: var(--primary-color);
             margin-top: 0;
-            font-weight: 800;
-            margin-bottom: 25px;
+            font-weight: 700;
+            margin-bottom: var(--spacing-lg);
         }
 
-        /* الزر العائم الجديد لإعدادات التنسيق */
+        /* الزر العائم لإعدادات التنسيق */
         .quick-settings-fab {
             position: fixed;
-            bottom: 30px;
-            left: 30px;
+            bottom: var(--spacing-xl);
+            left: var(--spacing-xl);
             z-index: 9990;
-            width: 60px;
-            height: 60px;
+            width: 3.75rem;
+            height: 3.75rem;
             border-radius: 50%;
             background: var(--primary-color);
             color: white;
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+            box-shadow: var(--shadow-lg);
             display: flex;
             justify-content: center;
             align-items: center;
@@ -1083,7 +1281,7 @@
         }
 
         .quick-settings-fab:hover {
-            transform: scale(1.1);
+            transform: scale(1.05);
         }
 
         @media print {
@@ -1301,16 +1499,21 @@
                 border-radius: 16px !important;
             }
 
+            /* Scroll lists - taller on mobile for better UX */
+            .scroll-list {
+                max-height: 55vh;
+            }
+
             /* Tabs (dashboard) */
             .tabs {
-                gap: 6px;
-                padding: 6px;
+                gap: var(--spacing-xs);
+                padding: var(--spacing-xs);
             }
 
             .tab-btn {
                 min-width: auto;
-                padding: 10px 8px;
-                font-size: 0.8rem;
+                padding: var(--spacing-md) var(--spacing-sm);
+                font-size: 0.875rem;
             }
 
             /* List items — vertical stacking for touch */
@@ -1520,18 +1723,21 @@
                 const dashIcon = document.getElementById('dashCloudIcon');
                 const text = document.getElementById('cloudText');
                 const dashText = document.getElementById('dashCloudText');
+                const notLoggedIn = !window.activeAccount;
 
                 if (status === 'connecting') {
                     if (icon) { icon.setAttribute('data-lucide', 'refresh-cw'); icon.classList.add('spin'); }
                     if (dashIcon) { dashIcon.setAttribute('data-lucide', 'refresh-cw'); dashIcon.classList.add('spin'); }
-                    if (text) text.innerText = 'جاري الاتصال...';
-                    if (dashText) dashText.innerText = 'جاري الاتصال...';
+                    if (text) text.innerText = notLoggedIn ? 'يرجى تسجيل الدخول' : 'جاري الاتصال...';
+                    if (dashText) dashText.innerText = notLoggedIn ? 'تسجيل الدخول' : 'جاري الاتصال...';
                 } else if (status === 'connected') {
                     if (icon) { icon.setAttribute('data-lucide', 'cloud-check'); icon.classList.remove('spin'); }
                     if (dashIcon) { dashIcon.setAttribute('data-lucide', 'cloud-check'); dashIcon.classList.remove('spin'); }
                 } else if (status === 'error') {
                     if (icon) { icon.setAttribute('data-lucide', 'cloud-off'); icon.classList.remove('spin'); }
                     if (dashIcon) { dashIcon.setAttribute('data-lucide', 'cloud-off'); dashIcon.classList.remove('spin'); }
+                    if (text) text.innerText = notLoggedIn ? 'يرجى تسجيل الدخول' : (text.innerText || '');
+                    if (dashText) dashText.innerText = notLoggedIn ? 'تسجيل الدخول' : (dashText.innerText || '');
                 }
                 if (window.lucide) window.lucide.createIcons();
             });
@@ -1579,7 +1785,7 @@
                             window.setCloudStatus('error');
                         }
                     } else {
-                        if (errEl) errEl.innerText = "الاسم غير موجود، يمكنك (إنشاء حساب جديد) بهذا الاسم 💡";
+                        if (errEl) errEl.innerText = "الاسم غير موجود. يرجى التحقق من البيانات والمحاولة مجدداً.";
                         if (overlay) overlay.style.display = 'flex';
                         window.setCloudStatus('error');
                     }
@@ -1902,12 +2108,15 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInWithCustomToken, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, getDoc, onSnapshot, enableIndexedDbPersistence } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, doc, setDoc, getDoc, onSnapshot, enableIndexedDbPersistence, collection, getDocs, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         window.firebaseDoc = doc;
         window.firebaseSetDoc = setDoc;
         window.firebaseGetDoc = getDoc;
         window.firebaseOnSnapshot = onSnapshot;
+        window.firebaseCollection = collection;
+        window.firebaseGetDocs = getDocs;
+        window.firebaseDeleteDoc = deleteDoc;
 
         try {
             let configStr = typeof __firebase_config !== 'undefined' ? __firebase_config : null;
@@ -1981,7 +2190,7 @@
         }
     </script>
     <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#6c5ce7">
+    <meta name="theme-color" content="#0d9488">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="TaraneemPro">
@@ -1993,9 +2202,9 @@
     <div id="saveStatus"><i data-lucide="check-circle"></i> تم الحفظ بنجاح</div>
 
     <div id="dashboardView" class="container" style="display: block;">
-        <div style="text-align: center; margin-bottom: 15px; padding-top: 10px;">
+        <div style="text-align: center; margin-bottom: var(--spacing-lg); padding-top: var(--spacing-md);">
             <h1
-                style="margin: 0; color: var(--primary-color); font-size: 2.2rem; font-weight: 900; letter-spacing: 1px;">
+                style="margin: 0; color: var(--primary-color); font-size: 2.25rem; font-weight: 800; letter-spacing: -0.02em;">
                 Taraneem Editor Pro
                 <span id="offlineIndicator"
                     style="display: none; vertical-align: middle; margin-right: 10px; font-size: 0.9rem; padding: 4px 12px; border-radius: 20px; background: #ff4757; color: white; font-weight: normal; box-shadow: 0 2px 4px rgba(255,71,87,0.4);"
@@ -2003,20 +2212,20 @@
                         style="width: 14px; height: 14px; margin-left: 4px;"></i> غير متصل</span>
             </h1>
         </div>
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--spacing-lg); flex-wrap: wrap; gap: var(--spacing-md);">
             <h2
-                style="margin: 0; color: var(--primary-color); font-size: 1.4rem; font-weight: 800; display: flex; align-items: center; gap: 10px;">
+                style="margin: 0; color: var(--primary-color); font-size: 1.5rem; font-weight: 700; display: flex; align-items: center; gap: var(--spacing-md);">
                 <i data-lucide="library"></i> مكتبة الترانيم
             </h2>
-            <div style="display: flex; gap: 10px;">
+            <div style="display: flex; gap: var(--spacing-md); align-items: center;">
                 <div id="dashCloudStatus"
-                    style="display: flex; align-items: center; gap: 8px; padding: 0 15px; border-radius: 50px; background: var(--bg-color); color: var(--primary-color); font-size: 0.85rem; font-weight: bold; box-shadow: inset 3px 3px 6px var(--shadow-dark), inset -3px -3px 6px var(--shadow-light); cursor: pointer;"
+                    style="display: flex; align-items: center; gap: var(--spacing-sm); padding: 0 var(--spacing-md); border-radius: var(--radius-xl); background: var(--input-bg); color: var(--primary-color); font-size: 0.9375rem; font-weight: 600; border: 1px solid rgba(0,0,0,0.06); cursor: pointer; transition: all 0.2s;"
                     onclick="document.getElementById('loginModalOverlay').style.display='flex'">
                     <i id="dashCloudIcon" data-lucide="cloud" style="width: 18px;"></i>
                     <span id="dashCloudText">تسجيل الدخول</span>
                 </div>
                 <button id="dashbtnLogout" class="btn-danger"
-                    style="display: none; border-radius: 50px; padding: 0 15px; font-weight: bold; box-shadow: inset 3px 3px 6px var(--shadow-dark), inset -3px -3px 6px var(--shadow-light);"
+                    style="display: none; border-radius: var(--radius-xl); padding: 0 var(--spacing-md); font-weight: 600;"
                     onclick="logoutCustom()" title="تسجيل الخروج">
                     <i data-lucide="log-out" style="width: 18px;"></i> <!-- Logout -->
                 </button>
@@ -2026,13 +2235,12 @@
             </div>
         </div>
 
-        <div style="display: flex; gap: 10px; margin-bottom: 25px;">
+        <div style="display: flex; gap: var(--spacing-md); margin-bottom: var(--spacing-xl); flex-wrap: wrap;">
             <button class="btn-solid-primary"
-                style="flex: 1; padding: 15px; font-size: 1.1rem; border-radius: 16px; box-shadow: 0 4px 15px rgba(108, 92, 231, 0.3);"
+                style="flex: 1; min-width: 12rem; padding: var(--spacing-lg); font-size: 1.0625rem; border-radius: var(--radius-lg);"
                 onclick="clearInputs()"><i data-lucide="plus-circle"></i> إنشاء ترنيمة جديدة</button>
             <button class="btn-solid-primary"
-                style="flex: 1; padding: 15px; font-size: 1.1rem; border-radius: 16px; box-shadow: 0 4px 15px rgba(108, 92, 231, 0.3); background: var(--bg-color); color: var(--primary-color); border: 2px solid var(--primary-color);"
-                onclick="window.showEditor()"><i data-lucide="edit-3"></i> فتح المحرر (متابعة التعديل)</button>
+                style="flex: 1; min-width: 12rem; padding: var(--spacing-lg); font-size: 1.0625rem; border-radius: var(--radius-lg); background: var(--surface-color); color: var(--primary-color); border: 2px solid var(--primary-color);" onclick="window.showEditor()"><i data-lucide="edit-3"></i> فتح المحرر (متابعة التعديل)</button>
         </div>
 
         <div id="dashboardTabsContainer">
@@ -2047,37 +2255,38 @@
                     onclick="switchModalTab('pendingTab')"><i data-lucide="bell"></i> طلبات الإضافة <span
                         id="pendingBadge"
                         style="display:none; margin-right: 5px; background: #ff4757; color: white; width: 20px; height: 20px; line-height: 20px; text-align: center; border-radius: 50%; font-size: 0.75rem; font-weight: bold; box-shadow: 0 2px 4px rgba(255,71,87,0.4);">0</span></button>
+                <button id="usersTabBtn" class="tab-btn" style="display:none;" onclick="switchModalTab('usersTab')"><i data-lucide="users"></i> إدارة المستخدمين</button>
             </div>
 
             <!-- تبويب المكتبة الأساسية (الافتراضي) -->
             <div id="baseLibraryTab" class="tab-content active">
-                <div style="position: relative; margin-bottom: 20px;">
-                    <i data-lucide="search" style="position: absolute; right: 15px; top: 15px; color: #a0a0a0;"></i>
+                <div style="position: relative; margin-bottom: var(--spacing-lg);">
+                    <i data-lucide="search" style="position: absolute; right: 1rem; top: 50%; transform: translateY(-50%); color: var(--text-muted); width: 1.125rem; height: 1.125rem;"></i>
                     <input type="text" id="searchBaseLibrary" placeholder="ابحث في الترانيم الرسمية المعتمدة..."
-                        style="padding-right: 45px; border-radius: 50px;" oninput="window.renderBaseLibrary()">
+                        style="padding-right: 2.75rem; padding-left: 1rem; border-radius: var(--border-radius);" oninput="window.renderBaseLibrary()">
                 </div>
-                <div id="baseLibraryList" style="overflow-y: auto; padding-right: 5px;"></div>
+                <div id="baseLibraryList" class="scroll-list"></div>
             </div>
 
             <!-- تبويب قوائم الخدمة -->
             <div id="setlistsTab" class="tab-content">
                 <div
-                    style="display: flex; gap: 10px; margin-bottom: 25px; background: var(--surface-color); padding: 15px; border-radius: 16px;">
+                    style="display: flex; gap: var(--spacing-md); margin-bottom: var(--spacing-lg); background: var(--surface-color); padding: var(--spacing-lg); border-radius: var(--radius-lg); border: 1px solid rgba(0,0,0,0.04);">
                     <input type="text" id="newSetlistName" placeholder="اسم قائمة الخدمة (مثال: اجتماع الأحد)"
-                        style="flex: 1; border-radius: 50px;">
+                        style="flex: 1; border-radius: var(--border-radius); min-width: 0;">
                     <button class="btn-solid-primary" onclick="createNewSetlist()"><i data-lucide="plus"></i> إنشاء
                         قائمة</button>
                 </div>
-                <div id="setlistsList" style="overflow-y: auto; padding-right: 5px;"></div>
+                <div id="setlistsList" class="scroll-list"></div>
             </div>
 
             <!-- تبويب مكتبتي الخاصة -->
             <div id="songsTab" class="tab-content">
-                <div style="display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap;">
-                    <div style="position: relative; flex: 1; min-width: 250px;">
-                        <i data-lucide="search" style="position: absolute; right: 15px; top: 15px; color: #a0a0a0;"></i>
+                <div style="display: flex; gap: var(--spacing-md); margin-bottom: var(--spacing-lg); flex-wrap: wrap;">
+                    <div style="position: relative; flex: 1; min-width: 15.625rem;">
+                        <i data-lucide="search" style="position: absolute; right: 1rem; top: 50%; transform: translateY(-50%); color: var(--text-muted); width: 1.125rem; height: 1.125rem;"></i>
                         <input type="text" id="searchLibrary" placeholder="ابحث في مكتبتك الخاصة..."
-                            style="padding-right: 45px; border-radius: 50px;" oninput="window.renderLibraryList()">
+                            style="padding-right: 2.75rem; padding-left: 1rem; border-radius: var(--border-radius);" oninput="window.renderLibraryList()">
                     </div>
                     <button class="btn-success" style="border-radius: 50px; padding: 10px 20px;"
                         onclick="exportLibraryToFile()">
@@ -2090,14 +2299,23 @@
                     <input type="file" id="importBackupInput" accept=".json" style="display: none;"
                         onchange="importLibraryFromFile(event)">
                 </div>
-                <div id="libraryList" style="overflow-y: auto; padding-right: 5px;"></div>
+                <div id="libraryList" class="scroll-list"></div>
             </div>
 
             <!-- تبويب طلبات الإضافة (للأدمن) -->
             <div id="pendingTab" class="tab-content">
                 <p style="color:#636e72; margin-bottom: 15px;">الترانيم المقترحة من المستخدمين في انتظار مراجعتك
                     واعتمادك:</p>
-                <div id="pendingList" style="overflow-y: auto; padding-right: 5px;"></div>
+                <div id="pendingList" class="scroll-list"></div>
+            </div>
+
+            <!-- تبويب إدارة المستخدمين (للأدمن فقط) -->
+            <div id="usersTab" class="tab-content">
+                <p style="color:#636e72; margin-bottom: 15px;">إضافة وتعديل وحذف حسابات المستخدمين:</p>
+                <div style="margin-bottom: 20px;">
+                    <button class="btn-solid-primary" onclick="openUserModal()"><i data-lucide="user-plus"></i> إضافة مستخدم</button>
+                </div>
+                <div id="usersList" class="scroll-list"></div>
             </div>
         </div>
     </div>
@@ -2109,19 +2327,19 @@
             <div class="sticky-toolbar">
                 <div class="toolbar-group">
                     <button class="btn-icon"
-                        style="padding: 6px 15px; display: flex; align-items: center; gap: 6px; font-weight: bold; font-family: 'Cairo', sans-serif; background: var(--bg-color); border-radius: 50px; box-shadow: inset 3px 3px 6px var(--shadow-dark), inset -3px -3px 6px var(--shadow-light); color: var(--text-color);"
+                        style="padding: var(--spacing-sm) var(--spacing-md); display: flex; align-items: center; gap: var(--spacing-sm); font-weight: 600; font-family: 'Cairo', sans-serif; background: var(--input-bg); border-radius: var(--radius-xl); border: 1px solid rgba(0,0,0,0.06); color: var(--text-color);"
                         onclick="window.showDashboard()" title="عودة للمكتبة">
                         <i data-lucide="arrow-right"></i> (المكتبة)
                     </button>
                     <button class="theme-toggle" onclick="toggleDarkMode()" title="تبديل الوضع الليلي">
                         <i data-lucide="moon"></i>
                     </button>
-                    <div style="display: flex; align-items: center; gap: 6px; padding: 6px 15px; border-radius: 50px; background: var(--bg-color); color: var(--primary-color); font-size: 0.85rem; font-weight: bold; box-shadow: inset 3px 3px 6px var(--shadow-dark), inset -3px -3px 6px var(--shadow-light);"
+                    <div style="display: flex; align-items: center; gap: var(--spacing-sm); padding: var(--spacing-sm) var(--spacing-md); border-radius: var(--radius-xl); background: var(--input-bg); color: var(--primary-color); font-size: 0.9375rem; font-weight: 600; border: 1px solid rgba(0,0,0,0.06);"
                         title="حالة الحفظ السحابي الآمن">
                         <i data-lucide="cloud-off" id="cloudIcon" style="width: 16px;"></i>
-                        <span id="cloudText">تهيئة السحابة...</span>
+                        <span id="cloudText">يرجى تسجيل الدخول</span>
                         <button class="btn-icon"
-                            style="padding: 4px; margin-right: 5px; box-shadow: none; color: #ff7675; background: transparent;"
+                            style="padding: var(--spacing-xs); margin-right: var(--spacing-sm); box-shadow: none; color: var(--chord-color); background: transparent;"
                             onclick="logoutCustom()" title="تسجيل الخروج والتبديل"><i data-lucide="log-out"
                                 style="width: 16px;"></i></button>
                     </div>
@@ -2196,7 +2414,7 @@
                             oninput="handleLyricsInput()"></textarea>
 
                         <div
-                            style="display: flex; gap: 10px; align-items: center; margin-top: 10px; background: var(--surface-color); padding: 12px 15px; border-radius: 12px; box-shadow: inset 3px 3px 6px var(--shadow-dark), inset -3px -3px 6px var(--shadow-light); flex-wrap: wrap;">
+                            style="display: flex; gap: var(--spacing-md); align-items: center; margin-top: var(--spacing-md); background: var(--surface-color); padding: var(--spacing-md) var(--spacing-lg); border-radius: var(--border-radius); border: 1px solid rgba(0,0,0,0.04); flex-wrap: wrap;">
                             <span
                                 style="font-size: 0.9rem; font-weight: bold; color: var(--primary-color); white-space: nowrap;"><i
                                     data-lucide="layers" style="width: 16px; vertical-align: middle;"></i>
@@ -2373,7 +2591,7 @@
                     style="color: var(--primary-color); font-size: 1rem; display: flex; align-items: center; gap: 5px;"><i
                         data-lucide="sliders" style="width: 16px;"></i> تنسيق سريع</strong>
                 <button class="btn-icon"
-                    style="padding: 4px; box-shadow: inset 2px 2px 5px var(--shadow-dark), inset -2px -2px 5px var(--shadow-light);"
+                    style="padding: var(--spacing-xs);"
                     onclick="toggleQuickSettings(event)"><i data-lucide="x" style="width: 14px;"></i></button>
             </div>
 
@@ -2499,7 +2717,7 @@
             <p style="font-size: 0.9rem; color: #636e72; margin-bottom: 20px;">قم بتسجيل الدخول للاحتفاظ بترانيمك
                 ومزامنتها على جميع أجهزتك.</p>
 
-            <div id="loginErrorMsg" style="color: #d63031; font-weight: bold; margin-bottom: 15px; font-size: 0.9rem;">
+            <div id="loginErrorMsg" style="color: var(--chord-color); font-weight: 600; margin-bottom: var(--spacing-md); font-size: 0.9375rem;">
             </div>
 
             <div style="display: flex; flex-direction: column; gap: 15px;">
@@ -2516,27 +2734,9 @@
                     onclick="submitLogin()">
                     <i data-lucide="log-in"></i> تسجيل الدخول
                 </button>
-                <button class="btn-warning" style="padding: 15px; font-size: 1rem; margin-top: 5px; color: #d35400;"
+                <button class="btn-warning" style="padding: 15px; font-size: 1rem; margin-top: 5px;"
                     onclick="document.getElementById('loginModalOverlay').style.display='none'">
                     <i data-lucide="x-circle"></i> إلغاء / عودة للرئيسية
-                </button>
-
-                <div style="display: flex; align-items: center; gap: 10px; margin: 10px 0;">
-                    <hr style="flex: 1; border: none; border-top: 1px solid var(--shadow-dark);">
-                    <span style="font-size: 0.8rem; color: #b2bec3;">أو</span>
-                    <hr style="flex: 1; border: none; border-top: 1px solid var(--shadow-dark);">
-                </div>
-
-                <button class="btn-secondary"
-                    style="padding: 12px; background: transparent; border: 2px solid var(--primary-color); color: var(--primary-color);"
-                    onclick="signupCustom()">
-                    <i data-lucide="user-plus"></i> إنشاء حساب جديد
-                </button>
-
-                <button
-                    style="background: transparent; border: none; box-shadow: none; color: #b2bec3; margin-top: 10px; text-decoration: underline; font-size: 0.85rem; cursor: pointer;"
-                    onclick="bypassLogin()">
-                    الدخول كضيف مؤقتاً (بدون مزامنة سحابية)
                 </button>
             </div>
         </div>
@@ -2561,7 +2761,7 @@
             <p style="font-size: 0.95rem; color: var(--text-color); margin-bottom: 20px; font-weight: bold;">اختر
                 القائمة التي تود إضافة الترنيمة إليها:</p>
             <div id="availableSetlistsContainer"
-                style="display: flex; flex-direction: column; gap: 12px; overflow-y: auto; padding-right: 5px; flex: 1;">
+                style="display: flex; flex-direction: column; gap: 12px; overflow-y: auto; padding-right: 5px; flex: 1; max-height: 50vh;">
                 <!-- سيتم تعبئة القوائم هنا -->
             </div>
         </div>
@@ -2669,6 +2869,31 @@
         </div>
     </div>
 
+    <!-- نافذة إضافة/تعديل مستخدم (للأدمن) -->
+    <div id="userModal" class="modal-overlay" style="z-index: 10002;">
+        <div style="background: var(--bg-color); padding: 30px; border-radius: 20px; width: 90%; max-width: 450px; box-shadow: 8px 8px 20px var(--shadow-dark), -8px -8px 20px var(--shadow-light);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 2px dashed var(--shadow-dark); padding-bottom: 15px;">
+                <h3 style="margin: 0; color: var(--primary-color); display: flex; align-items: center; gap: 10px; font-size: 1.3rem;">
+                    <i data-lucide="user-cog"></i> <span id="userModalTitle">إضافة مستخدم</span>
+                </h3>
+                <button class="close-btn" style="width: 40px; height: 40px;" onclick="closeUserModal()" title="إغلاق"><i data-lucide="x"></i></button>
+            </div>
+            <input type="hidden" id="userModalEditUsername" value="">
+            <div class="input-group" style="margin-bottom: 15px;">
+                <label>اسم المستخدم</label>
+                <input type="text" id="userModalUsername" placeholder="اسم المستخدم" style="border-radius: 12px;">
+            </div>
+            <div class="input-group" style="margin-bottom: 15px;">
+                <label>كلمة المرور</label>
+                <input type="password" id="userModalPassword" placeholder="كلمة المرور" style="border-radius: 12px;">
+            </div>
+            <div style="display: flex; gap: 15px; justify-content: flex-end; margin-top: 20px;">
+                <button class="btn-danger" onclick="closeUserModal()">إلغاء</button>
+                <button class="btn-solid-primary" id="userModalSaveBtn" onclick="saveUserFromModal()"><i data-lucide="save"></i> حفظ</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         // التهيئة وإدارة الحالة الأساسية
         window.state = {
@@ -2755,6 +2980,7 @@
             if (event && event.currentTarget) event.currentTarget.classList.add('active');
             const tab = document.getElementById(tabId);
             if (tab) tab.classList.add('active');
+            if (tabId === 'usersTab' && window.isAdmin() && window.renderUsersList) window.renderUsersList();
         }
 
         function toggleDarkMode() {
@@ -2880,6 +3106,7 @@
         window.updateAdminUI = function () {
             window.safeDOM(() => {
                 const pendingTab = document.getElementById('pendingTabBtn');
+                const usersTab = document.getElementById('usersTabBtn');
                 const btnSaveBase = document.getElementById('btnSaveBase');
                 const dashbtnLogout = document.getElementById('dashbtnLogout');
                 const btnSmartImport = document.getElementById('btnSmartImport');
@@ -2890,10 +3117,12 @@
 
                 if (window.isAdmin()) {
                     if (pendingTab) pendingTab.style.display = 'block';
+                    if (usersTab) usersTab.style.display = 'block';
                     if (btnSaveBase) btnSaveBase.style.display = 'flex';
                     if (btnSmartImport) btnSmartImport.style.display = 'flex';
                 } else {
                     if (pendingTab) pendingTab.style.display = 'none';
+                    if (usersTab) usersTab.style.display = 'none';
                     if (btnSaveBase) btnSaveBase.style.display = 'none';
                     if (btnSmartImport) btnSmartImport.style.display = 'none';
                 }
@@ -2986,6 +3215,7 @@
                         </div>
                         <div class="list-item-actions">
                             <button class="btn-icon" style="color: #ff4757;" title="عرض في وضع العزف" onclick="playLocalSong('${song.id}')"><i data-lucide="play" style="margin-left: -2px;"></i></button>
+                            <button class="btn-primary btn-icon" title="تحميل صفحة العزف كـ PDF" onclick="downloadSongAsPDF('${song.id}')"><i data-lucide="file-down"></i></button>
                             <button class="btn-primary btn-icon" title="إضافة لقائمة خدمة" onclick="openAddToSetlistModal('${song.id}')"><i data-lucide="list-plus"></i></button>
                             <button class="btn-primary btn-icon" title="فتح" onclick="loadFromLibrary('${song.id}')"><i data-lucide="folder-open"></i></button>
                             <button class="btn-warning btn-icon" title="اقتراح للمكتبة الأساسية" onclick="proposeSong('${song.id}')"><i data-lucide="share"></i></button>
@@ -3048,6 +3278,7 @@
                         </div>
                         <div class="list-item-actions">
                             <button class="btn-icon" style="color: #ff4757; margin-left: 5px;" title="عرض في وضع العزف" onclick="playBaseSong('${song.id}')"><i data-lucide="play" style="margin-left: -2px;"></i></button>
+                            <button class="btn-primary btn-icon" title="تحميل صفحة العزف كـ PDF" onclick="downloadSongAsPDF('${song.id}')"><i data-lucide="file-down"></i></button>
                             <button class="btn-primary btn-icon" title="إضافة لقائمة خدمة" onclick="openAddToSetlistModal('${song.id}')"><i data-lucide="list-plus"></i></button>
                             <button class="btn-success" style="padding: 8px 15px; border-radius: 12px;" title="نسخ إلى مكتبتي الخاصة لتعديلها" onclick="cloneToPrivate('${song.id}')"><i data-lucide="copy"></i> نسخ لمكتبتي</button>
                             ${adminActions}
@@ -3089,6 +3320,125 @@
                 });
                 if (window.lucide) window.lucide.createIcons();
             });
+        };
+
+        window.renderUsersList = async function () {
+            if (!window.isAdmin() || !window.db) return;
+            window.safeDOM(async () => {
+                const container = document.getElementById('usersList');
+                if (!container) return;
+                container.innerHTML = '<div style="text-align:center; padding: 20px; color:#aaa;"><i data-lucide="loader" class="spin" style="width:32px;height:32px;"></i><br>جاري تحميل المستخدمين...</div>';
+                if (window.lucide) window.lucide.createIcons();
+                try {
+                    const colRef = window.firebaseCollection(window.db, 'artifacts', window.appId, 'public', 'data', 'taraneem_accounts');
+                    const snap = await window.firebaseGetDocs(colRef);
+                    const users = [];
+                    snap.forEach(d => { users.push({ username: d.id, ...d.data() }); });
+                    container.innerHTML = '';
+                    if (users.length === 0) {
+                        container.innerHTML = '<div style="text-align:center; padding: 40px; color:#aaa;"><i data-lucide="users" style="width:48px;height:48px;opacity:0.5;margin-bottom:10px;"></i><br>لا يوجد مستخدمين بعد.</div>';
+                    } else {
+                        users.sort((a, b) => a.username.localeCompare(b.username));
+
+                        users.forEach(u => {
+                            const item = document.createElement('div');
+                            item.className = 'list-item';
+                            item.innerHTML = `
+                                <div class="list-item-info">
+                                    <strong>${u.username}</strong>
+                                </div>
+                                <div class="list-item-actions">
+                                    <button class="btn-primary btn-icon" title="تعديل" onclick="openUserModal('${u.username}')"><i data-lucide="pencil"></i></button>
+                                    <button class="btn-danger btn-icon" title="حذف" onclick="deleteUser('${u.username}')" ${u.username === 'karim' ? 'disabled' : ''}><i data-lucide="trash-2"></i></button>
+                                </div>
+                            `;
+                            container.appendChild(item);
+                        });
+                    }
+                    if (window.lucide) window.lucide.createIcons();
+                } catch (e) {
+                    console.error(e);
+                    container.innerHTML = '<div style="text-align:center; padding: 20px; color:#ff4757;">حدث خطأ في تحميل المستخدمين.</div>';
+                }
+            });
+        };
+
+        window.openUserModal = function (username) {
+            const modal = document.getElementById('userModal');
+            const titleEl = document.getElementById('userModalTitle');
+            const editInput = document.getElementById('userModalEditUsername');
+            const userInput = document.getElementById('userModalUsername');
+            const passInput = document.getElementById('userModalPassword');
+            if (!modal || !userInput || !passInput) return;
+            editInput.value = username || '';
+            if (username) {
+                titleEl.innerText = 'تعديل مستخدم';
+                userInput.value = username;
+                userInput.disabled = true;
+                passInput.value = '';
+                passInput.placeholder = 'اترك فارغاً للإبقاء على كلمة المرور الحالية';
+            } else {
+                titleEl.innerText = 'إضافة مستخدم';
+                userInput.value = '';
+                userInput.disabled = false;
+                passInput.value = '';
+                passInput.placeholder = 'كلمة المرور';
+            }
+            modal.classList.add('active');
+            if (window.lucide) window.lucide.createIcons();
+        };
+
+        window.closeUserModal = function () {
+            const modal = document.getElementById('userModal');
+            if (modal) modal.classList.remove('active');
+        };
+
+        window.saveUserFromModal = async function () {
+            if (!window.isAdmin() || !window.db) return;
+            const editInput = document.getElementById('userModalEditUsername');
+            const userInput = document.getElementById('userModalUsername');
+            const passInput = document.getElementById('userModalPassword');
+            const username = (userInput?.value || '').trim();
+            const password = (passInput?.value || '').trim();
+            const isEdit = !!editInput?.value;
+            if (!username) { alert('يرجى إدخال اسم المستخدم'); return; }
+            if (!isEdit && !password) { alert('يرجى إدخال كلمة المرور'); return; }
+            try {
+                const docRef = window.firebaseDoc(window.db, 'artifacts', window.appId, 'public', 'data', 'taraneem_accounts', username);
+                if (isEdit) {
+                    const snap = await window.firebaseGetDoc(docRef);
+                    if (!snap.exists()) { alert('المستخدم غير موجود'); return; }
+                    const data = { ...snap.data() };
+                    if (password) data.password = password;
+                    await window.firebaseSetDoc(docRef, data, { merge: true });
+                    if (window.showSaveStatus) window.showSaveStatus('تم تحديث المستخدم بنجاح ✔️');
+                } else {
+                    const snap = await window.firebaseGetDoc(docRef);
+                    if (snap.exists()) { alert('اسم المستخدم مستخدم مسبقاً'); return; }
+                    await window.firebaseSetDoc(docRef, { password, dataPayload: JSON.stringify({ library: [], setlists: [] }) });
+                    if (window.showSaveStatus) window.showSaveStatus('تم إضافة المستخدم بنجاح ✔️');
+                }
+                closeUserModal();
+                if (window.renderUsersList) window.renderUsersList();
+            } catch (e) {
+                console.error(e);
+                alert('حدث خطأ: ' + (e.message || 'غير معروف'));
+            }
+        };
+
+        window.deleteUser = async function (username) {
+            if (!window.isAdmin() || !window.db) return;
+            if (username === 'karim') return;
+            if (!confirm('هل أنت متأكد من حذف المستخدم "' + username + '"؟ سيتم حذف جميع بياناته.')) return;
+            try {
+                const docRef = window.firebaseDoc(window.db, 'artifacts', window.appId, 'public', 'data', 'taraneem_accounts', username);
+                await window.firebaseDeleteDoc(docRef);
+                if (window.showSaveStatus) window.showSaveStatus('تم حذف المستخدم ✔️');
+                if (window.renderUsersList) window.renderUsersList();
+            } catch (e) {
+                console.error(e);
+                alert('حدث خطأ: ' + (e.message || 'غير معروف'));
+            }
         };
 
         window.previewPendingRequest = function (proposalId) {
@@ -4108,8 +4458,10 @@
             const clone = previewContainer.cloneNode(true);
             exportBuffer.appendChild(clone);
 
-            // ضبط الكلون للعرض الثابت مع هوامش مريحة
-            clone.style.width = '794px';
+            // ضبط العرض الثابت (A4: 794px، المحتوى الداخلي 714px بعد الهوامش)
+            const pdfPageWidth = 794;
+            const pdfContentWidth = 714; // 794 - 40*2
+            clone.style.width = pdfPageWidth + 'px';
             clone.style.margin = '0';
             clone.style.padding = '40px'; 
             clone.style.background = 'white';
@@ -4117,6 +4469,20 @@
             clone.style.fontFamily = "'Cairo', sans-serif";
             clone.style.boxSizing = 'border-box';
             clone.style.display = 'block';
+            clone.style.maxWidth = pdfPageWidth + 'px';
+            clone.style.minWidth = pdfPageWidth + 'px';
+
+            // نسخ متغيرات CSS من منطقة المعاينة لضمان تطابق الخطوط والأحجام
+            const captureArea = document.getElementById("captureArea");
+            if (captureArea) {
+                const cs = getComputedStyle(captureArea);
+                const fontSize = cs.getPropertyValue('--preview-font-size') || '24px';
+                const chordSize = cs.getPropertyValue('--chord-size') || '16px';
+                const lineSpacing = cs.getPropertyValue('--line-spacing') || '1.6em';
+                clone.style.setProperty('--preview-font-size', fontSize);
+                clone.style.setProperty('--chord-size', chordSize);
+                clone.style.setProperty('--line-spacing', lineSpacing);
+            }
 
             // إصلاح الترويسة باستخدام Flexbox لمنع التداخل
             const songHeader = clone.querySelector('.song-header');
@@ -4156,52 +4522,63 @@
                 songHeader.appendChild(titleMetaContainer);
             }
 
-            const originalLines = previewContainer.querySelectorAll('.line');
             const clonedLines = clone.querySelectorAll('.line');
+            const fontSizeInput = document.getElementById("fontSizeRange");
+            const fontSize = fontSizeInput ? parseFloat(fontSizeInput.value) || 24 : 24;
+            const chordSizeVal = document.getElementById("chordSizeRange") ? document.getElementById("chordSizeRange").value : 16;
 
-            for (let i = 0; i < originalLines.length; i++) {
-                const originalChords = originalLines[i].querySelectorAll('.chord');
-                const clonedLine = clonedLines[i];
-
+            clonedLines.forEach((clonedLine) => {
                 clonedLine.querySelectorAll('.chord').forEach(c => c.remove());
+                const lineId = clonedLine.dataset.lineId;
+                const chords = state.chordMap[lineId];
+                if (!chords || chords.length === 0) return;
 
-                if (originalChords.length > 0) {
-                    clonedLine.style.position = 'relative';
-                    clonedLine.style.display = 'block';
-                    clonedLine.style.paddingTop = '1.7em'; 
-                    clonedLine.style.minHeight = '3.5em'; 
+                clonedLine.style.position = 'relative';
+                clonedLine.style.display = 'block';
+                clonedLine.style.paddingTop = '1.7em'; 
+                clonedLine.style.minHeight = '3.5em';
+                clonedLine.style.width = '100%';
+                clonedLine.style.boxSizing = 'border-box';
 
-                    const lineWidth = originalLines[i].offsetWidth;
+                const sortedChords = [...chords].sort((a, b) => (b.rightEm || 0) - (a.rightEm || 0));
 
-                    originalChords.forEach(chord => {
-                        const newChord = document.createElement('span');
-                        newChord.innerText = chord.innerText;
-                        newChord.className = "chord";
-                        
-                        const compStyle = window.getComputedStyle(chord);
-                        const lineRect = originalLines[i].getBoundingClientRect();
-                        const chordRect = chord.getBoundingClientRect();
+                sortedChords.forEach((cData) => {
+                    let rightEm = cData.rightEm;
+                    if (rightEm === undefined) {
+                        if (cData.rightPx !== undefined) rightEm = cData.rightPx / fontSize;
+                        else if (cData.xPercent !== undefined) rightEm = ((100 - cData.xPercent) / 100) * pdfContentWidth / fontSize;
+                        else return;
+                    }
 
-                        newChord.style.position = 'absolute';
-                        newChord.style.color = compStyle.color;
-                        newChord.style.fontSize = compStyle.fontSize;
-                        newChord.style.fontWeight = compStyle.fontWeight;
-                        newChord.style.fontFamily = compStyle.fontFamily;
-                        newChord.style.top = '0';
-                        newChord.style.backgroundColor = 'transparent';
-                        newChord.style.boxShadow = 'none';
-                        newChord.style.transform = 'translateX(50%)'; // نرجع للـ CSS القياسي
+                    const newChord = document.createElement('span');
+                    newChord.innerText = cData.chord;
+                    newChord.className = "chord";
 
-                        // حساب الموقع كنسبة مئوية لضمان ثباته
-                        const rightPx = lineRect.right - (chordRect.left + chordRect.width / 2);
-                        const rightPercent = (rightPx / lineWidth) * 100;
+                    newChord.style.position = 'absolute';
+                    newChord.style.color = '#0d9488';
+                    newChord.style.fontSize = chordSizeVal + 'px';
+                    newChord.style.fontWeight = '700';
+                    newChord.style.fontFamily = "'Cairo', sans-serif";
+                    newChord.style.top = '0';
+                    newChord.style.backgroundColor = 'transparent';
+                    newChord.style.boxShadow = 'none';
+                    newChord.style.transform = 'translateX(50%)';
+                    newChord.style.direction = 'ltr';
 
-                        newChord.style.right = rightPercent + '%';
-                        newChord.style.left = 'auto';
+                    const rightPx = rightEm * fontSize;
+                    const rightPercent = pdfContentWidth > 0 ? (rightPx / pdfContentWidth) * 100 : 0;
+                    newChord.style.right = Math.min(100, Math.max(0, rightPercent)) + '%';
+                    newChord.style.left = 'auto';
 
-                        clonedLine.appendChild(newChord);
-                    });
-                }
+                    clonedLine.appendChild(newChord);
+                });
+            });
+
+            const lyricsWrapper = clone.querySelector('.lyrics-wrapper');
+            if (lyricsWrapper) {
+                lyricsWrapper.style.width = '100%';
+                lyricsWrapper.style.maxWidth = pdfContentWidth + 'px';
+                lyricsWrapper.style.boxSizing = 'border-box';
             }
 
             modalInfoArea.innerHTML = '';
@@ -4236,6 +4613,23 @@
         window.closePdfPreviewModal = function () {
             const modal = document.getElementById('pdfPreviewModalOverlay');
             if (modal) modal.classList.remove('active');
+        };
+
+        window.downloadSongAsPDF = async function (songId) {
+            const song = state.library.find(s => s.id === songId) || state.baseLibrary.find(s => s.id === songId);
+            if (!song) return;
+            if (typeof html2pdf === 'undefined') {
+                alert("تعذر تحميل مكتبة PDF. يرجى التأكد من اتصالك بالإنترنت.");
+                return;
+            }
+            if (window.closeLibraryModal) window.closeLibraryModal();
+            if (window.showEditor) window.showEditor();
+            if (window.applyAutosaveData) window.applyAutosaveData(song);
+            if (typeof render === 'function') render();
+            await new Promise(r => setTimeout(r, 350));
+            if (window.exportAsPDF) window.exportAsPDF();
+            await new Promise(r => setTimeout(r, 250));
+            if (window.downloadPDF) window.downloadPDF();
         };
 
         window.downloadPDF = function () {
@@ -4279,7 +4673,6 @@
 
                 html2pdf().set(opt).from(theClone).save().then(() => {
                     if (window.showSaveStatus) window.showSaveStatus("تم التنزيل بنجاح! 📄🎉");
-                    setTimeout(closePdfPreviewModal, 1000);
                 }).catch(err => {
                     console.error("PDF generation promise error: ", err);
                     alert("حدث خطأ أثناء حفظ الملف: " + err.message);
