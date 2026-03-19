@@ -1,4 +1,4 @@
-version 1.1
+version 1.2
 const CACHE_NAME = 'taraneem-pro-cache-v1';
 const urlsToCache = [
     './',
