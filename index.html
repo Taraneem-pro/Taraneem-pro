@@ -14,6 +14,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
     <style>
         :root {
             /* Light Theme (Default) - matches index.html */
@@ -87,6 +88,13 @@
 
         .preview-container[data-exporting="true"] .hide-on-export {
             display: none !important;
+        }
+
+        /* SortableJS Ghost style */
+        .sortable-ghost {
+            opacity: 0.4;
+            background: var(--secondary-color) !important;
+            border: 2px dashed var(--primary-color) !important;
         }
 
         body {
@@ -1126,14 +1134,14 @@
             justify-content: center;
             max-width: 98vw;
             box-sizing: border-box;
-            transition: opacity 0.4s ease, transform 0.4s ease, visibility 0.4s;
+            transition: opacity 0.4s ease, bottom 0.4s ease, visibility 0.4s;
             visibility: visible;
         }
 
         .perf-controls.hidden {
             opacity: 0;
             visibility: hidden;
-            transform: translateX(-50%) translateY(20px);
+            bottom: -50px !important;
             pointer-events: none;
         }
 
@@ -2061,20 +2069,37 @@
             const propIdx = window.state.pendingRequests.findIndex(p => p.proposalId === proposalId);
             if (propIdx === -1) return;
 
-            const baseSong = JSON.parse(JSON.stringify(window.state.pendingRequests[propIdx]));
-            baseSong.id = window.generateId();
-            delete baseSong.proposalId;
-            delete baseSong.originalId;
-            delete baseSong.proposedBy;
+            const proposedData = window.state.pendingRequests[propIdx];
+            const existingInBase = window.state.baseLibrary.find(s => s.title.trim() === proposedData.title.trim());
 
-            window.state.baseLibrary.push(baseSong);
+            if (existingInBase) {
+                // Update existing entry
+                const existingId = existingInBase.id;
+                const updatedSong = JSON.parse(JSON.stringify(proposedData));
+                updatedSong.id = existingId; // Keep existing ID
+                delete updatedSong.proposalId;
+                delete updatedSong.originalId;
+                delete updatedSong.proposedBy;
+                
+                const existingIdx = window.state.baseLibrary.findIndex(s => s.id === existingId);
+                window.state.baseLibrary[existingIdx] = updatedSong;
+            } else {
+                // Add as new
+                const baseSong = JSON.parse(JSON.stringify(proposedData));
+                baseSong.id = window.generateId();
+                delete baseSong.proposalId;
+                delete baseSong.originalId;
+                delete baseSong.proposedBy;
+                window.state.baseLibrary.push(baseSong);
+            }
+
             window.state.pendingRequests.splice(propIdx, 1);
 
             await window.syncBaseLibrary();
             await window.syncPendingRequests();
             if (window.renderPendingRequests) window.renderPendingRequests();
             if (window.renderBaseLibrary) window.renderBaseLibrary();
-            window.showSaveStatus("تم قبول الترنيمة وإضافتها للمكتبة الأساسية ✔️");
+            window.showSaveStatus(existingInBase ? "تم تحديث الترنيمة في المكتبة الأساسية ✔️" : "تم قبول الترنيمة وإضافتها للمكتبة الأساسية ✔️");
         };
 
         window.rejectProposal = async function (proposalId) {
@@ -3041,7 +3066,12 @@
             const data = getCurrentEditorData();
             if (!data.lyrics.trim()) { alert("لا يمكن حفظ ترنيمة فارغة!"); return; }
 
-            if (!state.currentSongId || state.editingMode !== 'base') {
+            // Check if a song with the same title already exists in the Base Library
+            const existingInBase = state.baseLibrary.find(s => s.title.trim() === data.title.trim());
+            if (existingInBase) {
+                state.currentSongId = existingInBase.id;
+                state.editingMode = 'base';
+            } else if (!state.currentSongId || state.editingMode !== 'base') {
                 state.currentSongId = window.generateId();
                 state.editingMode = 'base';
             }
@@ -3511,17 +3541,14 @@
                             validSongCount++;
                             const keyBadge = song.key ? `<span style="font-size:0.8rem; color:var(--primary-color); margin-right:8px; display:inline-block; direction:ltr;">[${song.key}]</span>` : '';
                             songsHtml += `<div 
-                                draggable="true"
+                                class="sortable-item"
                                 data-list-id="${list.id}"
                                 data-song-idx="${idx}"
-                                style="display:flex; justify-content:space-between; align-items:center; font-size:0.95rem; padding:8px 10px; background:var(--bg-color); border-radius:8px; margin-bottom:5px; cursor:grab; transition: opacity 0.2s;"
-                                ondragstart="window.onSongDragStart(event, '${list.id}', ${idx})"
-                                ondragover="window.onSongDragOver(event)"
-                                ondrop="window.onSongDrop(event, '${list.id}', ${idx})"
-                                ondragend="window.onSongDragEnd(event)"
+                                data-song-id="${songId}"
+                                style="display:flex; justify-content:space-between; align-items:center; font-size:0.95rem; padding:8px 10px; background:var(--bg-color); border-radius:8px; margin-bottom:5px; transition: opacity 0.2s;"
                             >
                                 <span style="display:flex; align-items:center; gap:6px;">
-                                    <i data-lucide="grip-vertical" style="width:14px; height:14px; opacity:0.4; flex-shrink:0;"></i>
+                                    <i data-lucide="grip-vertical" class="grip-handle" style="width:14px; height:14px; opacity:0.4; flex-shrink:0; cursor:grab;"></i>
                                     <b>${displayNum++}.</b>
                                     <span style="margin-right:4px;">${song.title}</span>${keyBadge}${state.baseLibrary.find(s => s.id === songId) ? '<i data-lucide="shield-check" style="width:14px; color:#ff4757; margin-right:4px;" title="من الأساسية"></i>' : ''}
                                 </span>
@@ -3571,6 +3598,44 @@
                         </div>
                     `;
                     container.appendChild(item);
+
+                    // Initialize Sortable for this list
+                    if (isExpanded) {
+                        const listEl = document.getElementById(`songsList_${list.id}`);
+                        if (listEl && window.Sortable) {
+                            new Sortable(listEl, {
+                                animation: 150,
+                                handle: '.grip-handle',
+                                ghostClass: 'sortable-ghost',
+                                onEnd: function (evt) {
+                                    const oldIndex = evt.oldIndex;
+                                    const newIndex = evt.newIndex;
+                                    if (oldIndex === newIndex) return;
+
+                                    const targetList = state.setlists.find(l => l.id === list.id);
+                                    if (targetList) {
+                                        // Rebuild the songs array based on DOM order
+                                        const children = Array.from(evt.to.querySelectorAll('.sortable-item'));
+                                        const visibleIds = children.map(child => child.dataset.songId);
+                                        
+                                        // Extract IDs that are not currently in the DOM (missing songs)
+                                        // to preserve them in the list if needed
+                                        const hiddenIds = targetList.songs.filter(id => !visibleIds.includes(id));
+                                        
+                                        // Update the state: visible ones in their new order, then hidden ones
+                                        targetList.songs = [...visibleIds, ...hiddenIds];
+                                        
+                                        if (window.syncCloudData) window.syncCloudData();
+                                        // Use a small timeout to let Sortable finish its DOM manipulation 
+                                        // before we potentially wipe and recreate the DOM
+                                        setTimeout(() => {
+                                            if (window.renderSetlists) window.renderSetlists();
+                                        }, 50);
+                                    }
+                                }
+                            });
+                        }
+                    }
                 });
                 if (window.lucide) window.lucide.createIcons();
             });
@@ -3641,48 +3706,7 @@
             }
         };
 
-        // --- Drag-and-drop song reordering ---
-        window._songDrag = { listId: null, fromIdx: null };
-
-        window.onSongDragStart = function (event, listId, idx) {
-            window._songDrag = { listId, fromIdx: idx };
-            event.target.style.opacity = '0.4';
-            event.dataTransfer.effectAllowed = 'move';
-        };
-
-        window.onSongDragOver = function (event) {
-            event.preventDefault();
-            event.dataTransfer.dropEffect = 'move';
-            const el = event.currentTarget;
-            if (el) el.style.borderTop = '2px solid var(--primary-color)';
-        };
-
-        window.onSongDrop = function (event, listId, toIdx) {
-            event.preventDefault();
-            event.stopPropagation();
-            const el = event.currentTarget;
-            if (el) el.style.borderTop = '';
-
-            const { listId: fromListId, fromIdx } = window._songDrag;
-            if (fromListId !== listId || fromIdx === null || fromIdx === toIdx) return;
-
-            const list = state.setlists.find(l => l.id === listId);
-            if (!list) return;
-
-            const [moved] = list.songs.splice(fromIdx, 1);
-            list.songs.splice(toIdx, 0, moved);
-
-            window._songDrag = { listId: null, fromIdx: null };
-            if (window.syncCloudData) window.syncCloudData();
-            if (window.renderSetlists) window.renderSetlists();
-        };
-
-        window.onSongDragEnd = function (event) {
-            event.target.style.opacity = '';
-            // Clean up any leftover border highlights
-            document.querySelectorAll('[data-song-idx]').forEach(el => el.style.borderTop = '');
-            window._songDrag = { listId: null, fromIdx: null };
-        };
+        // --- Drag-and-drop song reordering (legacy removed, replaced by SortableJS) ---
 
         function toggleSetlist(listId) {
             state.expandedSetlists[listId] = !state.expandedSetlists[listId];
@@ -3797,29 +3821,31 @@
 
             const scale = vv.scale;
 
-            // Only apply counter-scaling when actually zoomed in
             if (scale > 1.05) {
                 const invScale = 1 / scale;
 
-                // Counter-scale the bar so it stays the same physical size
-                bar.style.transform = `scale(${invScale})`;
-                bar.style.transformOrigin = 'bottom left';
+                // Center horizontally and counter-scale
+                bar.style.transform = `translateX(-50%) scale(${invScale})`;
+                bar.style.transformOrigin = 'bottom center';
 
-                // Position it at the bottom of the visual viewport
-                const bottomOffset = 8;
-                bar.style.bottom = `${bottomOffset}px`;
+                // Physical visual viewport center Left
+                const centerLeft = vv.offsetLeft + (vv.width / 2);
+                bar.style.left = `${centerLeft}px`;
 
-                // Adjust left and width so it fills the visible area correctly
-                const leftPx = vv.offsetLeft * scale;
-                bar.style.left = `${leftPx + 8}px`;
-                bar.style.width = `${vv.width * scale - 16}px`;
+                // Physical visual viewport bottom
+                if (!bar.classList.contains('hidden')) {
+                    const layoutHeight = document.documentElement.clientHeight;
+                    const vvBottom = vv.offsetTop + vv.height;
+                    const distFromBottom = layoutHeight - vvBottom;
+                    bar.style.bottom = `${distFromBottom + (15 * invScale)}px`;
+                }
             } else {
-                // At default zoom, clear inline styles and let CSS handle layout
                 bar.style.transform = '';
                 bar.style.transformOrigin = '';
-                bar.style.bottom = '';
                 bar.style.left = '';
-                bar.style.width = '';
+                if (!bar.classList.contains('hidden')) {
+                    bar.style.bottom = '';
+                }
             }
         }
 
