@@ -1,5 +1,4 @@
-version 1.3
-const CACHE_NAME = 'taraneem-pro-cache-v1';
+const CACHE_NAME = 'taraneem-pro-cache-v2';
 const urlsToCache = [
     './',
     './index.html',
@@ -13,7 +12,6 @@ self.addEventListener('install', event => {
         caches.open(CACHE_NAME)
             .then(cache => {
                 console.log('Opened cache');
-                // We use catch to avoid stopping the entire installation if an icon is missing initially
                 return Promise.all(
                     urlsToCache.map(url => {
                         return cache.add(url).catch(err => console.log('Failed to cache', url, err));
@@ -26,40 +24,44 @@ self.addEventListener('install', event => {
 });
 
 self.addEventListener('fetch', event => {
-    // Only intercept basic get requests, ignore Firebase/Firestore requests to let them handle their own persistence
+    // Only intercept basic GET requests, ignore Firebase/Firestore requests
     if (event.request.method !== 'GET' || event.request.url.includes('firestore.googleapis.com')) {
         return;
     }
 
+    // Network-First strategy: try the network first, fall back to cache if offline
     event.respondWith(
-        caches.match(event.request)
+        fetch(event.request)
             .then(response => {
-                // Cache hit - return response
-                if (response) {
+                // Check if we received a valid response
+                if (!response || response.status !== 200) {
                     return response;
                 }
 
-                // Fallback to fetch from network
-                return fetch(event.request).then(
-                    function (response) {
-                        // Check if we received a valid response
-                        if (!response || response.status !== 200 || response.type !== 'basic') {
-                            return response;
-                        }
+                // Clone the response because it's a stream and can only be consumed once
+                const responseToCache = response.clone();
 
-                        // Clone the response because it's a stream and can only be consumed once
-                        var responseToCache = response.clone();
+                // Update the cache with the fresh response
+                caches.open(CACHE_NAME)
+                    .then(cache => {
+                        cache.put(event.request, responseToCache);
+                    });
 
-                        caches.open(CACHE_NAME)
-                            .then(function (cache) {
-                                cache.put(event.request, responseToCache);
-                            });
-
-                        return response;
+                return response;
+            })
+            .catch(() => {
+                // Network failed (user is offline), try the cache
+                return caches.match(event.request).then(cachedResponse => {
+                    if (cachedResponse) {
+                        return cachedResponse;
                     }
-                ).catch(err => {
-                    console.log('Fetch failed, user is likely offline', err);
-                    // Standard offline fallback could go here
+                    // If not in cache either, return a basic offline message for navigation requests
+                    if (event.request.mode === 'navigate') {
+                        return new Response(
+                            '<h1 style="text-align:center;margin-top:40vh;font-family:sans-serif">أنت غير متصل بالإنترنت</h1>',
+                            { headers: { 'Content-Type': 'text/html; charset=utf-8' } }
+                        );
+                    }
                 });
             })
     );
