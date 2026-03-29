@@ -3,7 +3,18 @@
 
 <head>
     <!-- Apply saved theme instantly before any render to prevent flash of wrong theme -->
-    <script>if (localStorage.getItem('taraneem_theme') === 'light') { document.documentElement.setAttribute('data-theme', 'light'); }</script>
+    <script>
+        const savedTheme = localStorage.getItem('taraneem_theme') || 'dark';
+        if (savedTheme === 'light') { 
+            document.documentElement.setAttribute('data-theme', 'light');
+        }
+        // Force initial theme-color
+        const meta = document.createElement('meta');
+        meta.id = 'theme-meta';
+        meta.name = 'theme-color';
+        meta.content = (savedTheme === 'light') ? '#6c5ce7' : '#171a21';
+        document.head.appendChild(meta);
+    </script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Taraneem Editor Pro - محرّر الترانيم</title>
@@ -3035,11 +3046,20 @@
 
         function toggleDarkMode() {
             state.isDarkMode = !state.isDarkMode;
-            document.documentElement.setAttribute('data-theme', state.isDarkMode ? 'dark' : 'light');
+            const theme = state.isDarkMode ? 'dark' : 'light';
+            document.documentElement.setAttribute('data-theme', theme);
+            
+            // تحديث لون البار العلوي (Theme Color)
+            const metaTheme = document.getElementById('theme-meta');
+            if (metaTheme) {
+                // اللون الموف الأساسي في الوضع الفاتح، ولون أغمق قليلاً في الوضع الليلي لراحة العين
+                metaTheme.setAttribute('content', state.isDarkMode ? '#171a21' : '#6c5ce7');
+            }
+
             const icon = document.getElementById('themeIcon');
             if (icon) icon.setAttribute('data-lucide', state.isDarkMode ? 'sun' : 'moon');
             if (window.lucide) window.lucide.createIcons();
-            localStorage.setItem('taraneem_theme', state.isDarkMode ? 'dark' : 'light');
+            localStorage.setItem('taraneem_theme', theme);
         }
 
         function getCurrentEditorData() {
