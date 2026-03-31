@@ -2009,7 +2009,11 @@
         };
 
         window.syncCloudData = async function () {
-            if (!window.activeAccount || !window.currentUser || !window.db) return false;
+            if (!window.activeAccount || !window.db) {
+                console.error("لم يتم الحفظ: لا يوجد حساب نشط أو غير متصل.");
+                if (window.showSaveStatus) window.showSaveStatus("خطأ: لم يتم الحفظ لانقطاع الاتصال ☁️");
+                return false;
+            }
             if (window.showSaveStatus) window.showSaveStatus("جاري الحفظ في السحابة... ☁️");
             const docRef = window.firebaseDoc(window.db, 'artifacts', window.appId, 'public', 'data', 'taraneem_accounts', window.activeAccount);
             const payload = JSON.stringify({ library: window.state.library, setlists: window.state.setlists });
@@ -2018,21 +2022,32 @@
                 if (window.showSaveStatus) window.showSaveStatus("تم الحفظ في مكتبتك بنجاح! ☁️");
                 return true;
             } catch (e) {
-                console.error(e);
-                if (window.showSaveStatus) window.showSaveStatus("خطأ في الاتصال بالسحابة.");
+                console.error("Cloud Data Sync Error:", e);
+                if (window.showSaveStatus) window.showSaveStatus("خطأ في الاتصال بالسحابة: " + e.message);
                 return false;
             }
         };
 
         window.syncBaseLibrary = async function () {
-            if (!window.currentUser || !window.db || !window.isAdmin()) return false;
+            if (!window.activeAccount || !window.db || !window.isAdmin()) {
+                console.error("لم يتم الحفظ: لا تملك صلاحية، أو حساب غير متصل.");
+                if (window.showSaveStatus) window.showSaveStatus("خطأ: لا تملك صلاحية تحديث السحابة الأساسية");
+                return false;
+            }
             const docRef = window.firebaseDoc(window.db, 'artifacts', window.appId, 'public', 'data', 'taraneem_global', 'base_library');
-            try { await window.firebaseSetDoc(docRef, { dataPayload: JSON.stringify(window.state.baseLibrary) }, { merge: true }); return true; }
-            catch (e) { return false; }
+            try { 
+                await window.firebaseSetDoc(docRef, { dataPayload: JSON.stringify(window.state.baseLibrary) }, { merge: true }); 
+                return true; 
+            }
+            catch (e) { 
+                console.error("Base Library Sync Error:", e);
+                if (window.showSaveStatus) window.showSaveStatus("خطأ السحابة: " + e.message);
+                return false; 
+            }
         };
 
         window.syncPendingRequests = async function () {
-            if (!window.currentUser || !window.db) return false;
+            if (!window.activeAccount || !window.db) return false;
             const docRef = window.firebaseDoc(window.db, 'artifacts', window.appId, 'public', 'data', 'taraneem_global', 'pending_requests');
             try { await window.firebaseSetDoc(docRef, { dataPayload: JSON.stringify(window.state.pendingRequests) }, { merge: true }); return true; }
             catch (e) { return false; }
@@ -3677,18 +3692,20 @@
             });
         }
 
-        function createNewSetlist() {
+        window.createNewSetlist = function createNewSetlist() {
             const el = document.getElementById('newSetlistName');
             if (!el) return;
             const name = el.value.trim();
             if (!name) return;
-            const newId = generateId();
+            const newId = window.generateId();
             const newList = { id: newId, name: name, songs: [] };
             state.setlists.push(newList);
             state.expandedSetlists[newId] = true;
             el.value = '';
             if (window.syncCloudData) window.syncCloudData();
-        }
+            if (window.renderSetlists) window.renderSetlists();
+            window.showSaveStatus("تم إنشاء قائمة الخدمة بنجاح ✅");
+        };
 
         function deleteSetlist(id) {
             if (confirm("حذف قائمة الخدمة؟ (لن يتم حذف الترانيم نفسها)")) {
