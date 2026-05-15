@@ -1722,9 +1722,9 @@
         };
 
         // دالة لتحديث التطبيق يدوياً
-        window.forceAppRefresh = function () {
+        window.forceAppRefresh = function (ev) {
             // إظهار تنبيه بسيط للمستخدم
-            const btn = event?.currentTarget;
+            const btn = ev?.currentTarget || (typeof event !== 'undefined' ? event?.currentTarget : null);
             if (btn) btn.classList.add('spin');
             
             // إعادة تحميل الصفحة
@@ -1738,21 +1738,6 @@
             } else {
                 fn();
             }
-        };
-
-        window.updateAdminUI = function () {
-            window.safeDOM(() => {
-                const pendingTab = document.getElementById('pendingTabBtn');
-                const btnSaveBase = document.getElementById('btnSaveBase');
-                if (window.isAdmin()) {
-                    if (pendingTab) pendingTab.style.display = 'flex';
-                    if (btnSaveBase) btnSaveBase.style.display = 'flex';
-                } else {
-                    if (pendingTab) pendingTab.style.display = 'none';
-                    if (btnSaveBase) btnSaveBase.style.display = 'none';
-                }
-                if (window.lucide) window.lucide.createIcons();
-            });
         };
 
         window.setCloudStatus = function (status) {
@@ -1930,16 +1915,7 @@
                 });
 
                 // 2. مزامنة المكتبة الأساسية للجميع
-                if (window.unsubscribeBase) window.unsubscribeBase();
-                const baseRef = window.firebaseDoc(window.db, 'artifacts', window.appId, 'public', 'data', 'taraneem_global', 'base_library');
-                window.unsubscribeBase = window.firebaseOnSnapshot(baseRef, (docSnap) => {
-                    if (docSnap.exists()) {
-                        try {
-                            window.state.baseLibrary = JSON.parse(docSnap.data().dataPayload || '[]');
-                            if (window.renderBaseLibrary) window.renderBaseLibrary();
-                        } catch (e) { }
-                    }
-                });
+                if (window.subscribeBaseLibrary) window.subscribeBaseLibrary();
 
                 // 3. مزامنة طلبات الإضافة (للأدمن فقط) والتنبيه
                 if (window.unsubscribePending) window.unsubscribePending();
@@ -2034,17 +2010,49 @@
                 if (window.showSaveStatus) window.showSaveStatus("خطأ: لا تملك صلاحية تحديث السحابة الأساسية");
                 return false;
             }
+            if (!window.currentUser) {
+                if (window.showSaveStatus) window.showSaveStatus("خطأ: انتظر اتصال السحابة ثم حاول مجدداً ⏳");
+                return false;
+            }
             if (window.showSaveStatus) window.showSaveStatus("جاري تحديث المكتبة الأساسية... ☁️");
             const docRef = window.firebaseDoc(window.db, 'artifacts', window.appId, 'public', 'data', 'taraneem_global', 'base_library');
-            try { 
-                await window.firebaseSetDoc(docRef, { dataPayload: JSON.stringify(window.state.baseLibrary) }, { merge: true }); 
+            const payload = JSON.stringify(window.state.baseLibrary);
+            const localCount = window.state.baseLibrary.length;
+            window._baseLibrarySaveInFlight = true;
+            try {
+                await window.firebaseSetDoc(docRef, {
+                    dataPayload: payload,
+                    updatedAt: Date.now(),
+                    updatedBy: window.activeAccount
+                }, { merge: true });
+
+                if (window.firebaseWaitForPendingWrites) {
+                    await window.firebaseWaitForPendingWrites(window.db);
+                }
+
+                const verifySnap = window.firebaseGetDocFromServer
+                    ? await window.firebaseGetDocFromServer(docRef)
+                    : await window.firebaseGetDoc(docRef);
+                if (!verifySnap.exists()) {
+                    throw new Error('لم يُؤكَّد الحفظ على السحابة');
+                }
+                let savedCount = 0;
+                try {
+                    savedCount = JSON.parse(verifySnap.data().dataPayload || '[]').length;
+                } catch (e) { /* ignore parse */ }
+                if (savedCount < localCount) {
+                    throw new Error('السحابة لم تستقبل كل الترانيم — تحقق من الاتصال أو صلاحيات الحساب');
+                }
+
+                window._skipBaseLibraryCacheUntil = Date.now() + 8000;
                 if (window.showSaveStatus) window.showSaveStatus("تم تحديث المكتبة الأساسية بنجاح ✔️");
-                return true; 
-            }
-            catch (e) { 
+                return true;
+            } catch (e) {
                 console.error("Base Library Sync Error:", e);
-                if (window.showSaveStatus) window.showSaveStatus("خطأ السحابة: " + e.message);
-                return false; 
+                if (window.showSaveStatus) window.showSaveStatus("خطأ السحابة: " + (e.message || e.code || 'فشل الحفظ'));
+                return false;
+            } finally {
+                window._baseLibrarySaveInFlight = false;
             }
         };
 
@@ -2053,6 +2061,33 @@
             const docRef = window.firebaseDoc(window.db, 'artifacts', window.appId, 'public', 'data', 'taraneem_global', 'pending_requests');
             try { await window.firebaseSetDoc(docRef, { dataPayload: JSON.stringify(window.state.pendingRequests) }, { merge: true }); return true; }
             catch (e) { return false; }
+        };
+
+        window.subscribeBaseLibrary = function () {
+            if (!window.db || !window.firebaseOnSnapshot) return;
+            if (!window.state) {
+                window.safeDOM(() => window.subscribeBaseLibrary());
+                return;
+            }
+            if (window.unsubscribeBase) window.unsubscribeBase();
+            const baseRef = window.firebaseDoc(window.db, 'artifacts', window.appId, 'public', 'data', 'taraneem_global', 'base_library');
+            window.unsubscribeBase = window.firebaseOnSnapshot(baseRef, { includeMetadataChanges: true }, (docSnap) => {
+                if (window._baseLibrarySaveInFlight) return;
+                if (docSnap.metadata.fromCache && window._skipBaseLibraryCacheUntil && Date.now() < window._skipBaseLibraryCacheUntil) {
+                    return;
+                }
+                if (docSnap.exists()) {
+                    try {
+                        const incoming = JSON.parse(docSnap.data().dataPayload || '[]');
+                        const localLen = window.state.baseLibrary?.length || 0;
+                        if (docSnap.metadata.fromCache && incoming.length < localLen) {
+                            return;
+                        }
+                        window.state.baseLibrary = incoming;
+                        if (window.renderBaseLibrary) window.renderBaseLibrary();
+                    } catch (e) { }
+                }
+            });
         };
 
         // --- دوال الانتقال بين المحرر والداشبورد ---
@@ -2180,15 +2215,17 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInWithCustomToken, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, getDoc, onSnapshot, enableIndexedDbPersistence, collection, getDocs, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, doc, setDoc, getDoc, getDocFromServer, onSnapshot, enableIndexedDbPersistence, collection, getDocs, deleteDoc, waitForPendingWrites } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         window.firebaseDoc = doc;
         window.firebaseSetDoc = setDoc;
         window.firebaseGetDoc = getDoc;
+        window.firebaseGetDocFromServer = getDocFromServer;
         window.firebaseOnSnapshot = onSnapshot;
         window.firebaseCollection = collection;
         window.firebaseGetDocs = getDocs;
         window.firebaseDeleteDoc = deleteDoc;
+        window.firebaseWaitForPendingWrites = waitForPendingWrites;
 
         try {
             let configStr = typeof __firebase_config !== 'undefined' ? __firebase_config : null;
@@ -2245,11 +2282,14 @@
                 onAuthStateChanged(window.auth, (user) => {
                     if (user) {
                         window.currentUser = user;
+                        if (window.subscribeBaseLibrary) window.subscribeBaseLibrary();
                         window.safeDOM(() => {
                             const savedUser = localStorage.getItem('taraneem_username');
                             const savedPass = localStorage.getItem('taraneem_password');
                             if (savedUser && savedPass) {
                                 window.loginCustom(savedUser, savedPass);
+                            } else {
+                                window.setCloudStatus('connected');
                             }
                         });
                     } else {
@@ -2320,17 +2360,17 @@
 
         <div id="dashboardTabsContainer">
             <div class="tabs">
-                <button class="tab-btn active" onclick="switchModalTab('baseLibraryTab')"><i
+                <button class="tab-btn active" onclick="switchModalTab('baseLibraryTab', this)"><i
                         data-lucide="book-open"></i> المكتبة الأساسية</button>
-                <button class="tab-btn" onclick="switchModalTab('setlistsTab')"><i data-lucide="list-music"></i> قوائم
+                <button class="tab-btn" onclick="switchModalTab('setlistsTab', this)"><i data-lucide="list-music"></i> قوائم
                     الخدمة</button>
-                <button class="tab-btn" onclick="switchModalTab('songsTab')"><i data-lucide="music"></i> مكتبتي
+                <button class="tab-btn" onclick="switchModalTab('songsTab', this)"><i data-lucide="music"></i> مكتبتي
                     الخاصة</button>
                 <button id="pendingTabBtn" class="tab-btn" style="display:none;"
-                    onclick="switchModalTab('pendingTab')"><i data-lucide="bell"></i> طلبات الإضافة <span
+                    onclick="switchModalTab('pendingTab', this)"><i data-lucide="bell"></i> طلبات الإضافة <span
                         id="pendingBadge"
                         style="display:none; margin-right: 5px; background: #ff4757; color: white; width: 20px; height: 20px; line-height: 20px; text-align: center; border-radius: 50%; font-size: 0.75rem; font-weight: bold; box-shadow: 0 2px 4px rgba(255,71,87,0.4);">0</span></button>
-                <button id="usersTabBtn" class="tab-btn" style="display:none;" onclick="switchModalTab('usersTab')"><i data-lucide="users"></i> إدارة المستخدمين</button>
+                <button id="usersTabBtn" class="tab-btn" style="display:none;" onclick="switchModalTab('usersTab', this)"><i data-lucide="users"></i> إدارة المستخدمين</button>
             </div>
 
             <!-- تبويب المكتبة الأساسية (الافتراضي) -->
@@ -2459,10 +2499,10 @@
 
             <!-- التبويبات لفصل الإدخال عن التنسيق -->
             <div class="editor-tabs">
-                <div class="editor-tab-btn active" onclick="switchEditorTab('tab-write')">
+                <div class="editor-tab-btn active" onclick="switchEditorTab('tab-write', this)">
                     <i data-lucide="pen-tool"></i> كتابة الترنيمة
                 </div>
-                <div class="editor-tab-btn" onclick="switchEditorTab('tab-style')">
+                <div class="editor-tab-btn" onclick="switchEditorTab('tab-style', this)">
                     <i data-lucide="sliders"></i> العرض والتنسيق
                 </div>
             </div>
@@ -2812,7 +2852,15 @@
                     onclick="submitLogin()">
                     <i data-lucide="log-in"></i> تسجيل الدخول
                 </button>
+                <button class="btn-success" style="padding: 15px; font-size: 1rem; margin-top: 5px;"
+                    onclick="signupCustom()">
+                    <i data-lucide="user-plus"></i> إنشاء حساب جديد
+                </button>
                 <button class="btn-warning" style="padding: 15px; font-size: 1rem; margin-top: 5px;"
+                    onclick="bypassLogin()">
+                    <i data-lucide="user"></i> دخول كضيف (محلي)
+                </button>
+                <button class="btn-secondary" style="padding: 12px; font-size: 0.95rem; margin-top: 5px; background: transparent; color: var(--text-muted); box-shadow: none;"
                     onclick="document.getElementById('loginModalOverlay').style.display='none'">
                     <i data-lucide="x-circle"></i> إلغاء / عودة للرئيسية
                 </button>
@@ -2939,10 +2987,10 @@
 
             <div style="display: flex; gap: 15px; justify-content: flex-end;">
                 <button class="btn-danger" style="padding: 10px 20px; border-radius: 12px;"
-                    onclick="document.getElementById('smartImportModal').classList.remove('active')" تلغاء</button>
-                    <button class="btn-success"
-                        style="padding: 10px 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0, 184, 148, 0.4);"
-                        onclick="processSmartImport()"><i data-lucide="wand-2"></i> استيراد و تطبيق</button>
+                    onclick="document.getElementById('smartImportModal').classList.remove('active')">إلغاء</button>
+                <button class="btn-success"
+                    style="padding: 10px 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0, 184, 148, 0.4);"
+                    onclick="processSmartImport()"><i data-lucide="wand-2"></i> استيراد و تطبيق</button>
             </div>
         </div>
     </div>
@@ -3007,21 +3055,21 @@
                 "Db": ["Db", "Ebm", "Fm", "Gb", "Ab", "Bbm", "Cdim", "DbM7", "Ebm7", "Fm7", "GbM7", "Ab7", "Bbm7", "Cø7"],
                 "Gb": ["Gb", "Abm", "Bbm", "Cb", "Db", "Ebm", "Fdim", "GbM7", "Abm7", "Bbm7", "CbM7", "Db7", "Ebm7", "Fø7"],
                 "Cb": ["Cb", "Dbm", "Ebm", "Fb", "Gb", "Abm", "Bbdim", "CbM7", "Dbm7", "Ebm7", "FbM7", "Gb7", "Abm7", "Bbø7"],
-                "Am": ["Am", "Bdim", "C", "Dm", "Em", "F", "G", "E7", "Am7", "Bø7", "C7", "Dm7", "Em7", "F7", "G7"],
-                "Em": ["Em", "F#dim", "G", "Am", "Bm", "C", "D", "B7", "Em7", "F#ø7", "G7", "Am7", "Bm7", "C7", "D7"],
-                "Bm": ["Bm", "C#dim", "D", "Em", "F#m", "G", "A", "F#7", "Bm7", "C#ø7", "D7", "Em7", "F#m7", "G7", "A7"],
-                "F#m": ["F#m", "G#dim", "A", "Bm", "C#m", "D", "E", "C#7", "F#m7", "G#ø7", "A7", "Bm7", "C#m7", "D7", "E7"],
-                "C#m": ["C#m", "D#dim", "E", "F#m", "G#m", "A", "B", "G#7", "C#m7", "D#ø7", "E7", "F#m7", "G#m7", "A7", "B7"],
-                "G#m": ["G#m", "A#dim", "B", "C#m", "D#m", "E", "F#", "D#7", "G#m7", "A#ø7", "B7", "C#m7", "D#m7", "E7", "F#7"],
-                "D#m": ["D#m", "E#dim", "F#", "G#m", "A#m", "B", "C#", "A#7", "D#m7", "E#ø7", "F#7", "G#m7", "A#m7", "B7", "C#7"],
-                "A#m": ["A#m", "B#dim", "C#", "D#m", "E#m", "F#", "G#", "E#7", "A#m7", "B#ø7", "C#7", "D#m7", "E#m7", "F#7", "G#7"],
-                "Dm": ["Dm", "Edim", "F", "Gm", "Am", "Bb", "C", "A7", "Dm7", "Eø7", "F7", "Gm7", "Am7", "Bb7", "C7"],
-                "Gm": ["Gm", "Adim", "Bb", "Cm", "D", "Eb", "F", "D7", "Gm7", "Aø7", "Bb7", "Cm7", "D7", "Eb7", "F7"],
-                "Cm": ["Cm", "Ddim", "Eb", "Fm", "Gm", "Ab", "Bb", "G7", "Cm7", "Dø7", "Eb7", "Fm7", "Gm7", "Ab7", "Bb7"],
-                "Fm": ["Fm", "Gdim", "Ab", "Bbm", "Cm", "Db", "Eb", "C7", "Fm7", "Gø7", "Ab7", "Bbm7", "Cm7", "Db7", "Eb7"],
-                "Bbm": ["Bbm", "Cdim", "Db", "Ebm", "Fm", "Gb", "Ab", "F7", "Bbm7", "Cø7", "Db7", "Ebm7", "Fm7", "Gb7", "Ab7"],
-                "Ebm": ["Ebm", "Fdim", "Gb", "Abm", "Bbm", "Cb", "Db", "Bb7", "Ebm7", "Fø7", "Gb7", "Abm7", "Bbm7", "Cb7", "Db7"],
-                "Abm": ["Abm", "Bbdim", "Cb", "Dbm", "Ebm", "Fb", "Gb", "Eb7", "Abm7", "Bbø7", "Cb7", "Dbm7", "Ebm7", "Fb7", "Gb7"]
+                "Am": ["Am", "Bdim", "C", "Dm", "Em", "F", "G", "E7", "Am7", "Bø7", "CM7", "Dm7", "Em7", "FM7", "GM7"],
+                "Em": ["Em", "F#dim", "G", "Am", "Bm", "C", "D", "B7", "Em7", "F#ø7", "GM7", "Am7", "Bm7", "CM7", "DM7"],
+                "Bm": ["Bm", "C#dim", "D", "Em", "F#m", "G", "A", "F#7", "Bm7", "C#ø7", "DM7", "Em7", "F#m7", "GM7", "AM7"],
+                "F#m": ["F#m", "G#dim", "A", "Bm", "C#m", "D", "E", "C#7", "F#m7", "G#ø7", "AM7", "Bm7", "C#m7", "DM7", "EM7"],
+                "C#m": ["C#m", "D#dim", "E", "F#m", "G#m", "A", "B", "G#7", "C#m7", "D#ø7", "EM7", "F#m7", "G#m7", "AM7", "BM7"],
+                "G#m": ["G#m", "A#dim", "B", "C#m", "D#m", "E", "F#", "D#7", "G#m7", "A#ø7", "BM7", "C#m7", "D#m7", "EM7", "F#M7"],
+                "D#m": ["D#m", "E#dim", "F#", "G#m", "A#m", "B", "C#", "A#7", "D#m7", "E#ø7", "F#M7", "G#m7", "A#m7", "BM7", "C#M7"],
+                "A#m": ["A#m", "B#dim", "C#", "D#m", "E#m", "F#", "G#", "E#7", "A#m7", "B#ø7", "C#M7", "D#m7", "E#m7", "F#M7", "G#M7"],
+                "Dm": ["Dm", "Edim", "F", "Gm", "Am", "Bb", "C", "A7", "Dm7", "Eø7", "FM7", "Gm7", "Am7", "BbM7", "CM7"],
+                "Gm": ["Gm", "Adim", "Bb", "Cm", "D", "Eb", "F", "D7", "Gm7", "Aø7", "BbM7", "Cm7", "D7", "EbM7", "FM7"],
+                "Cm": ["Cm", "Ddim", "Eb", "Fm", "Gm", "Ab", "Bb", "G7", "Cm7", "Dø7", "EbM7", "Fm7", "Gm7", "AbM7", "BbM7"],
+                "Fm": ["Fm", "Gdim", "Ab", "Bbm", "Cm", "Db", "Eb", "C7", "Fm7", "Gø7", "AbM7", "Bbm7", "Cm7", "DbM7", "EbM7"],
+                "Bbm": ["Bbm", "Cdim", "Db", "Ebm", "Fm", "Gb", "Ab", "F7", "Bbm7", "Cø7", "DbM7", "Ebm7", "Fm7", "GbM7", "AbM7"],
+                "Ebm": ["Ebm", "Fdim", "Gb", "Abm", "Bbm", "Cb", "Db", "Bb7", "Ebm7", "Fø7", "GbM7", "Abm7", "Bbm7", "CbM7", "DbM7"],
+                "Abm": ["Abm", "Bbdim", "Cb", "Dbm", "Ebm", "Fb", "Gb", "Eb7", "Abm7", "Bbø7", "CbM7", "Dbm7", "Ebm7", "EM7", "GbM7"]
             }
         };
 
@@ -3044,18 +3092,20 @@
             else { panel.style.display = 'none'; }
         }
 
-        function switchEditorTab(tabId) {
+        function switchEditorTab(tabId, btnEl) {
             document.querySelectorAll('.editor-tab-btn').forEach(btn => btn.classList.remove('active'));
             document.querySelectorAll('.editor-tab-content').forEach(content => content.classList.remove('active'));
-            if (event && event.currentTarget) event.currentTarget.classList.add('active');
+            const activeBtn = btnEl || (typeof event !== 'undefined' ? event?.currentTarget : null);
+            if (activeBtn) activeBtn.classList.add('active');
             const tab = document.getElementById(tabId);
             if (tab) tab.classList.add('active');
         }
 
-        function switchModalTab(tabId) {
+        function switchModalTab(tabId, btnEl) {
             document.querySelectorAll('#dashboardTabsContainer .tab-btn').forEach(btn => btn.classList.remove('active'));
             document.querySelectorAll('#dashboardTabsContainer .tab-content').forEach(content => content.classList.remove('active'));
-            if (event && event.currentTarget) event.currentTarget.classList.add('active');
+            const activeBtn = btnEl || (typeof event !== 'undefined' ? event?.currentTarget : null);
+            if (activeBtn) activeBtn.classList.add('active');
             const tab = document.getElementById(tabId);
             if (tab) tab.classList.add('active');
             if (tabId === 'usersTab' && window.isAdmin() && window.renderUsersList) window.renderUsersList();
@@ -3136,14 +3186,16 @@
                 state.editingMode = 'base';
             }
             data.id = state.currentSongId;
+            data.timestamp = Date.now();
 
             const idx = state.baseLibrary.findIndex(s => s.id === state.currentSongId);
             if (idx > -1) { state.baseLibrary[idx] = data; } else { state.baseLibrary.push(data); }
             if (window.renderBaseLibrary) window.renderBaseLibrary();
             if (window.syncBaseLibrary) {
-                window.showSaveStatus("جاري التحديث في الأساسية...");
                 const ok = await window.syncBaseLibrary();
-                if (ok) window.showSaveStatus("تم تحديث المكتبة الأساسية بنجاح 🌟");
+                if (!ok) {
+                    window.showSaveStatus("تعذّر الحفظ في الأساسية — الترنيمة ظاهرة محلياً فقط ⚠️");
+                }
             }
         };
 
@@ -3708,8 +3760,12 @@
             if (!name) return;
             const newId = window.generateId();
             const newList = { id: newId, name: name, songs: [] };
-            state.setlists.push(newList);
-            state.expandedSetlists[newId] = true;
+            // Ensure we reference the global state object
+            if (!window.state) window.state = {};
+            if (!window.state.setlists) window.state.setlists = [];
+            window.state.setlists.push(newList);
+            if (!window.state.expandedSetlists) window.state.expandedSetlists = {};
+            window.state.expandedSetlists[newId] = true;
             el.value = '';
             if (window.syncCloudData) window.syncCloudData();
             if (window.renderSetlists) window.renderSetlists();
@@ -3796,6 +3852,8 @@
 
         window.openAddToSetlistModal = function (songId) {
             const container = document.getElementById('availableSetlistsContainer');
+            const modal = document.getElementById('addToSetlistModalOverlay');
+            if (!container || !modal) return;
             container.innerHTML = '';
 
             if (state.setlists.length === 0) {
@@ -3824,8 +3882,7 @@
                 });
             }
 
-            const modal = document.getElementById('addToSetlistModalOverlay');
-            if (modal) modal.classList.add('active');
+            modal.classList.add('active');
             if (window.lucide) window.lucide.createIcons();
         };
 
@@ -4607,6 +4664,71 @@
         document.addEventListener("pointermove", handleDragMove); document.addEventListener("pointerup", handleDragEnd); document.addEventListener("pointercancel", handleDragEnd);
         window.addEventListener('resize', () => { if (!state.dragging) applyChords(); });
 
+        // ── تسمية موسيقية صحيحة (Bb لا A# عند النزول، إلخ) ──
+        const AMBIGUOUS_PITCH_CLASSES = new Set([1, 3, 6, 8, 10]); // Db/Eb/Gb/Ab/Bb
+
+        function parseRootNote(noteStr) {
+            const m = (noteStr || '').match(/^([A-G])([b#]?)/i);
+            if (!m) return null;
+            return m[1].toUpperCase() + (m[2] || '');
+        }
+
+        function rootToPitchClass(root) {
+            const n = parseRootNote(root);
+            if (!n) return -1;
+            const sharp = constants.enharmonicsToSharp[n] || n;
+            return constants.notesSharp.indexOf(sharp);
+        }
+
+        function rootUsesFlatAccidental(root) {
+            const n = parseRootNote(root);
+            return !!(n && /^[A-G]b/i.test(n));
+        }
+
+        function rootUsesSharpAccidental(root) {
+            const n = parseRootNote(root);
+            return !!(n && n.includes('#'));
+        }
+
+        /** اختيار b أو # حسب اتجاه التحويل ونظرية الموسيقى */
+        function preferFlatSpelling(newPitchClass, semitoneStep, currentRoot) {
+            if (!AMBIGUOUS_PITCH_CLASSES.has(newPitchClass)) return false;
+            if (semitoneStep < 0) return true;  // نزول → b (مثلاً C → Bb لا A#)
+            if (semitoneStep > 0) return false; // صعود → # (مثلاً F → F# لا Gb)
+            if (rootUsesFlatAccidental(currentRoot)) return true;
+            if (rootUsesSharpAccidental(currentRoot)) return false;
+            return false;
+        }
+
+        function spellPitchClass(pitchClass, preferFlats) {
+            return preferFlats ? constants.notesFlat[pitchClass] : constants.notesSharp[pitchClass];
+        }
+
+        function transposeRootSpelling(rootStr, semitoneStep) {
+            const pc = rootToPitchClass(rootStr);
+            if (pc < 0) return rootStr;
+            const newPc = (((pc + semitoneStep) % 12) + 12) % 12;
+            return spellPitchClass(newPc, preferFlatSpelling(newPc, semitoneStep, rootStr));
+        }
+
+        function resolveScaleKey(keyName) {
+            if (constants.scales[keyName]) return constants.scales[keyName];
+            const root = parseRootNote(keyName);
+            if (root) {
+                const pc = rootToPitchClass(root);
+                const suffix = keyName.slice(root.length);
+                if (pc >= 0) {
+                    const flatKey = constants.notesFlat[pc] + suffix;
+                    const sharpKey = constants.notesSharp[pc] + suffix;
+                    if (constants.scales[flatKey]) return constants.scales[flatKey];
+                    if (constants.scales[sharpKey]) return constants.scales[sharpKey];
+                }
+            }
+            const match = keyName.match(/^[A-G][b#]?m?/);
+            if (match && constants.scales[match[0]]) return constants.scales[match[0]];
+            return constants.scales["C"];
+        }
+
         function transposeAll(step) {
             const keyInput = document.getElementById("key");
             if (!keyInput) return;
@@ -4614,37 +4736,27 @@
             saveToHistory();
             let currentKeyStr = keyInput.value.trim();
             if (currentKeyStr && !state.originalKey) { state.originalKey = currentKeyStr; }
-            let newKeyStr = currentKeyStr; let isTargetFlat = false;
 
             if (currentKeyStr) {
-                const keyRootMatch = currentKeyStr.match(/^[A-G][b#]?/);
+                const keyRootMatch = currentKeyStr.match(/^([A-G][b#]?)/i);
                 if (keyRootMatch) {
-                    const oldRootSharp = constants.enharmonicsToSharp[keyRootMatch[0]] || keyRootMatch[0];
-                    const oldIdx = constants.notesSharp.indexOf(oldRootSharp);
-                    if (oldIdx !== -1) {
-                        let newIdx = (((oldIdx + step) % 12) + 12) % 12;
-                        let tempNewRootSharp = constants.notesSharp[newIdx];
-                        const keySuffix = currentKeyStr.slice(keyRootMatch[0].length);
-                        const tempNewKeyContext = tempNewRootSharp + keySuffix;
-                        isTargetFlat = constants.flatKeys.some(fk => tempNewKeyContext.startsWith(fk) && (tempNewKeyContext === fk || tempNewKeyContext === fk + 'm'));
-                        let finalNewRoot = isTargetFlat ? constants.notesFlat[newIdx] : tempNewRootSharp;
-                        newKeyStr = finalNewRoot + keySuffix;
-                        keyInput.value = newKeyStr;
+                    const oldRoot = keyRootMatch[0];
+                    const keySuffix = currentKeyStr.slice(oldRoot.length);
+                    if (rootToPitchClass(oldRoot) >= 0) {
+                        const newRoot = transposeRootSpelling(oldRoot, step);
+                        keyInput.value = newRoot + keySuffix;
                     }
                 }
             }
 
             Object.values(state.chordMap).forEach(list => {
                 list.forEach(cData => {
-                    const chordMatch = cData.chord.match(/^[A-G][b#]?/);
+                    const chordMatch = cData.chord.match(/^([A-G][b#]?)/i);
                     if (chordMatch) {
-                        const rootSharp = constants.enharmonicsToSharp[chordMatch[0]] || chordMatch[0];
-                        const suffix = cData.chord.slice(chordMatch[0].length);
-                        const idx = constants.notesSharp.indexOf(rootSharp);
-                        if (idx !== -1) {
-                            let newIdx = (((idx + step) % 12) + 12) % 12;
-                            let newRoot = isTargetFlat ? constants.notesFlat[newIdx] : constants.notesSharp[newIdx];
-                            cData.chord = newRoot + suffix;
+                        const oldRoot = chordMatch[0];
+                        const suffix = cData.chord.slice(oldRoot.length);
+                        if (rootToPitchClass(oldRoot) >= 0) {
+                            cData.chord = transposeRootSpelling(oldRoot, step) + suffix;
                         }
                     }
                 });
@@ -4661,12 +4773,7 @@
             const container = document.getElementById("suggestedChords");
             if (!container) return;
             container.innerHTML = "";
-            let scaleToUse = constants.scales[key];
-            if (!scaleToUse) {
-                const match = key.match(/^[A-G][b#]?m?/);
-                if (match && constants.scales[match[0]]) { scaleToUse = constants.scales[match[0]]; }
-                else { scaleToUse = constants.scales["C"]; }
-            }
+            const scaleToUse = resolveScaleKey(key);
             scaleToUse.forEach(c => {
                 const btn = document.createElement("button");
                 btn.className = "chord-btn"; btn.innerText = c;
@@ -5183,6 +5290,12 @@
 
         // ربط أحداث الإدخال المتكررة بشكل آمن مع تعريف الدوال
         window.safeDOM(() => {
+            loadFromLocalStorage();
+            if (window.lucide) window.lucide.createIcons();
+            if (window.updateAdminUI) window.updateAdminUI();
+            if (window.renderBaseLibrary) window.renderBaseLibrary();
+            if (window.renderLibraryList) window.renderLibraryList();
+            if (window.renderSetlists) window.renderSetlists();
             setTimeout(() => { if (window.checkSharedUrl) window.checkSharedUrl(); }, 800);
             document.querySelectorAll('input, select, textarea').forEach(el => {
                 if (el.id === 'lyrics') {
@@ -5196,8 +5309,8 @@
             window.showDashboard();
         });
 
-        // Register Service Worker for PWA
-        if ('serviceWorker' in navigator) {
+        // Register Service Worker for PWA (skip on file:// — no sw.js beside this HTML copy)
+        if ('serviceWorker' in navigator && location.protocol !== 'file:') {
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('sw.js').then(registration => {
                     console.log('ServiceWorker registration successful with scope: ', registration.scope);
