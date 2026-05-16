@@ -619,9 +619,10 @@
 
         .line {
             position: relative;
-            margin-bottom: var(--line-spacing);
+            margin-bottom: 0.5em;
+            line-height: var(--line-spacing, 1.6);
             cursor: default;
-            padding: 5px 0;
+            padding: 0.85em 0 5px 0; /* الحد الأدنى للمسافة */
             border-radius: 8px;
             transition: background 0.2s;
             display: block;
@@ -673,7 +674,7 @@
 
         .chord {
             position: absolute;
-            top: -1.8em;
+            top: -0.85em; /* الكورد ملاصق تقريباً للحروف */
             font-size: var(--chord-size);
             font-weight: 700;
             font-family: var(--font-en);
@@ -1721,6 +1722,21 @@
             return window.activeAccount === ADMIN_USERNAME;
         };
 
+        window.updateAdminUI = function () {
+            window.safeDOM(() => {
+                const isAdmin = window.isAdmin();
+                const btnSaveBase = document.getElementById('btnSaveBase');
+                const pendingTabBtn = document.getElementById('pendingTabBtn');
+                const usersTabBtn = document.getElementById('usersTabBtn');
+                const dashbtnLogout = document.getElementById('dashbtnLogout');
+
+                if (btnSaveBase) btnSaveBase.style.display = isAdmin ? 'flex' : 'none';
+                if (pendingTabBtn) pendingTabBtn.style.display = isAdmin ? 'inline-block' : 'none';
+                if (usersTabBtn) usersTabBtn.style.display = isAdmin ? 'inline-block' : 'none';
+                if (dashbtnLogout) dashbtnLogout.style.display = window.activeAccount ? 'flex' : 'none';
+            });
+        };
+
         // دالة لتحديث التطبيق يدوياً
         window.forceAppRefresh = function (ev) {
             // إظهار تنبيه بسيط للمستخدم
@@ -1751,16 +1767,18 @@
                 if (status === 'connecting') {
                     if (icon) { icon.setAttribute('data-lucide', 'refresh-cw'); icon.classList.add('spin'); }
                     if (dashIcon) { dashIcon.setAttribute('data-lucide', 'refresh-cw'); dashIcon.classList.add('spin'); }
-                    if (text) text.innerText = notLoggedIn ? 'يرجى تسجيل الدخول' : 'جاري الاتصال...';
-                    if (dashText) dashText.innerText = notLoggedIn ? 'تسجيل الدخول' : 'جاري الاتصال...';
+                    if (text) text.innerText = notLoggedIn ? 'جاري الاتصال...' : 'جاري المزامنة...';
+                    if (dashText) dashText.innerText = notLoggedIn ? 'جاري الاتصال...' : 'جاري المزامنة...';
                 } else if (status === 'connected') {
                     if (icon) { icon.setAttribute('data-lucide', 'cloud-check'); icon.classList.remove('spin'); }
                     if (dashIcon) { dashIcon.setAttribute('data-lucide', 'cloud-check'); dashIcon.classList.remove('spin'); }
+                    if (text) text.innerText = notLoggedIn ? 'يرجى تسجيل الدخول' : `مكتبة ${window.activeAccount}`;
+                    if (dashText) dashText.innerText = notLoggedIn ? 'تسجيل الدخول' : `مكتبة ${window.activeAccount}`;
                 } else if (status === 'error') {
                     if (icon) { icon.setAttribute('data-lucide', 'cloud-off'); icon.classList.remove('spin'); }
                     if (dashIcon) { dashIcon.setAttribute('data-lucide', 'cloud-off'); dashIcon.classList.remove('spin'); }
-                    if (text) text.innerText = notLoggedIn ? 'يرجى تسجيل الدخول' : (text.innerText || '');
-                    if (dashText) dashText.innerText = notLoggedIn ? 'تسجيل الدخول' : (dashText.innerText || '');
+                    if (text) text.innerText = notLoggedIn ? 'وضع الضيف (محلي)' : 'خطأ في المزامنة';
+                    if (dashText) dashText.innerText = notLoggedIn ? 'تسجيل الدخول' : 'خطأ في المزامنة';
                 }
                 if (window.lucide) window.lucide.createIcons();
             });
@@ -1813,8 +1831,8 @@
                         window.setCloudStatus('error');
                     }
                 } catch (e) {
-                    console.error(e);
-                    if (errEl) errEl.innerText = "حدث خطأ في الاتصال بالسحابة ⚠️";
+                    console.error("Login Error Details:", e);
+                    if (errEl) errEl.innerText = "حدث خطأ في الاتصال بالسحابة ⚠️ (" + (e.message || e.code || 'فشل غير معروف') + ")";
                     if (overlay) overlay.style.display = 'flex';
                     window.setCloudStatus('error');
                 }
@@ -1858,7 +1876,7 @@
                     window.finishLoginSetup(uInput, pInput);
                 } catch (e) {
                     console.error(e);
-                    if (errEl) errEl.innerText = "حدث خطأ أثناء إنشاء الحساب، تأكد من الاتصال ⚠️";
+                    if (errEl) errEl.innerText = "حدث خطأ أثناء إنشاء الحساب، تأكد من الاتصال ⚠️ (" + (e.message || e.code || 'فشل غير معروف') + ")";
                     window.setCloudStatus('error');
                 }
             });
@@ -2066,7 +2084,8 @@
         window.subscribeBaseLibrary = function () {
             if (!window.db || !window.firebaseOnSnapshot) return;
             if (!window.state) {
-                window.safeDOM(() => window.subscribeBaseLibrary());
+                // استخدام setTimeout لمنع التكرار اللانهائي (Maximum call stack size exceeded)
+                setTimeout(() => window.subscribeBaseLibrary(), 100);
                 return;
             }
             if (window.unsubscribeBase) window.unsubscribeBase();
@@ -2243,7 +2262,7 @@
                     messagingSenderId: "337828804127",
                     appId: "1:337828804127:web:210ceeac2855e91f50072a"
                 };
-                window.appId = 'my-custom-taraneem-app';
+                window.appId = 'my-custom-taraneem-app'; 
             }
 
             if (Object.keys(firebaseConfig).length > 0 && firebaseConfig.apiKey) {
@@ -2268,6 +2287,7 @@
                         } else {
                             await signInAnonymously(window.auth);
                         }
+                        console.log("Firebase: Anonymous Auth Successful");
                     } catch (error) {
                         console.error('Auth Error:', error);
                         window.setCloudStatus('error');
@@ -2280,13 +2300,18 @@
                 initAuth();
 
                 onAuthStateChanged(window.auth, (user) => {
+                    console.log("Firebase Auth State Changed:", user ? "User Authenticated" : "No User");
                     if (user) {
                         window.currentUser = user;
-                        if (window.subscribeBaseLibrary) window.subscribeBaseLibrary();
+                        if (window.subscribeBaseLibrary) {
+                            console.log("Subscribing to Base Library...");
+                            window.subscribeBaseLibrary();
+                        }
                         window.safeDOM(() => {
                             const savedUser = localStorage.getItem('taraneem_username');
                             const savedPass = localStorage.getItem('taraneem_password');
                             if (savedUser && savedPass) {
+                                console.log("Attempting Auto-Login for:", savedUser);
                                 window.loginCustom(savedUser, savedPass);
                             } else {
                                 window.setCloudStatus('connected');
@@ -2581,40 +2606,40 @@
                     <div class="input-group">
                         <label><i data-lucide="heading-1"></i> حجم خط العنوان</label>
                         <div class="range-control">
-                            <i data-lucide="a-small" style="opacity: 0.5;"></i>
+                            <i data-lucide="type" style="opacity: 0.5; width: 14px;"></i>
                             <input type="range" id="headerFontSizeRange" min="20" max="60" value="36"
                                 oninput="updateStyles()">
-                            <i data-lucide="a-large" style="opacity: 0.5;"></i>
+                            <i data-lucide="type" style="opacity: 0.5; width: 22px;"></i>
                             <span class="range-val" id="headerFontSizeVal">36</span>
                         </div>
                     </div>
                     <div class="input-group">
                         <label><i data-lucide="type"></i> حجم خط الكلمات</label>
                         <div class="range-control">
-                            <i data-lucide="a-small" style="opacity: 0.5;"></i>
+                            <i data-lucide="type" style="opacity: 0.5; width: 14px;"></i>
                             <input type="range" id="fontSizeRange" min="16" max="50" value="24"
                                 oninput="updateStyles()">
-                            <i data-lucide="a-large" style="opacity: 0.5;"></i>
+                            <i data-lucide="type" style="opacity: 0.5; width: 22px;"></i>
                             <span class="range-val" id="fontSizeVal">24</span>
                         </div>
                     </div>
                     <div class="input-group">
                         <label><i data-lucide="music-4"></i> حجم الكوردات</label>
                         <div class="range-control">
-                            <i data-lucide="a-small" style="opacity: 0.5;"></i>
+                            <i data-lucide="music" style="opacity: 0.5; width: 14px;"></i>
                             <input type="range" id="chordSizeRange" min="12" max="36" value="16"
                                 oninput="updateStyles()">
-                            <i data-lucide="a-large" style="opacity: 0.5;"></i>
+                            <i data-lucide="music" style="opacity: 0.5; width: 22px;"></i>
                             <span class="range-val" id="chordSizeVal">16</span>
                         </div>
                     </div>
                     <div class="input-group">
                         <label><i data-lucide="move-vertical"></i> المسافة بين السطور</label>
                         <div class="range-control">
-                            <i data-lucide="minimize-2" style="opacity: 0.5;"></i>
+                            <i data-lucide="minus" style="opacity: 0.5; width: 14px;"></i>
                             <input type="range" id="lineSpacingRange" min="1" max="4" step="0.1" value="1.6"
                                 oninput="updateStyles()">
-                            <i data-lucide="maximize-2" style="opacity: 0.5;"></i>
+                            <i data-lucide="plus" style="opacity: 0.5; width: 22px;"></i>
                             <span class="range-val" id="lineSpacingVal">1.6</span>
                         </div>
                     </div>
@@ -2622,10 +2647,10 @@
                     <div class="input-group">
                         <label><i data-lucide="image"></i> حجم اللوجو</label>
                         <div class="range-control">
-                            <i data-lucide="minimize" style="opacity: 0.5;"></i>
+                            <i data-lucide="image" style="opacity: 0.5; width: 14px;"></i>
                             <input type="range" id="logoSizeRange" min="50" max="300" value="180"
                                 oninput="updateStyles()">
-                            <i data-lucide="maximize" style="opacity: 0.5;"></i>
+                            <i data-lucide="image" style="opacity: 0.5; width: 22px;"></i>
                             <span class="range-val" id="logoSizeVal">180</span>
                         </div>
                     </div>
@@ -2942,8 +2967,9 @@
                 style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 2px dashed var(--shadow-dark); padding-bottom: 15px;">
                 <h3
                     style="margin: 0; color: var(--primary-color); display: flex; align-items: center; gap: 10px; font-size: 1.3rem;">
-                    <i data-lucide="file-text"></i> معاينة تصدير PDF
+                    <i data-lucide="file-text"></i> معاينة PDF قبل التنزيل
                 </h3>
+                <span id="pdfPageCountText" style="margin: 0 12px; padding: 6px 14px; border-radius: 50px; background: var(--surface-color); color: var(--primary-color); font-weight: 700; font-size: 0.9rem;">— صفحة</span>
                 <button class="close-btn" style="width: 40px; height: 40px;" onclick="closePdfPreviewModal()"
                     title="إغلاق">
                     <i data-lucide="x"></i>
@@ -2956,8 +2982,7 @@
             <div
                 style="display: flex; justify-content: flex-end; gap: 15px; margin-top: 20px; border-top: 1px solid var(--shadow-dark); padding-top: 15px;">
                 <button class="btn-danger" onclick="closePdfPreviewModal()"><i data-lucide="x"></i> إلغاء</button>
-                <button class="btn-solid-success" onclick="downloadPDF()" style="padding: 12px 25px;"><i data-lucide="download"></i> تنزيل كملف
-                    PDF</button>
+                <button class="btn-solid-success" onclick="downloadPDF()" style="padding: 12px 28px;"><i data-lucide="download"></i> تنزيل PDF</button>
             </div>
         </div>
     </div>
@@ -4554,8 +4579,14 @@
                 container.style.setProperty('--preview-font-size', fs + 'px');
                 container.style.setProperty('--header-font-size', hfs + 'px');
                 container.style.setProperty('--chord-size', cs + 'px');
-                container.style.setProperty('--line-spacing', ls + 'em');
+                container.style.setProperty('--line-spacing', ls); 
                 container.style.setProperty('--logo-size', logoSz + 'px');
+                
+                // تحديث مباشر لضمان استجابة زر المسافات فوراً في صفحة الكتابة
+                container.querySelectorAll('.line').forEach(l => {
+                    l.style.lineHeight = ls;
+                    l.style.paddingTop = '0.85em'; 
+                });
             }
             applyChords(); autoSave();
         }
@@ -4794,159 +4825,220 @@
             btn.click(); el.value = "";
         }
 
-        window.exportAsPDF = function () {
+        const PDF_A4_WIDTH = 794;
+        const PDF_A4_HEIGHT = 1123;
+        const PDF_CONTENT_WIDTH = 714;
+
+        window.getPdfStyleValues = function () {
+            const usePdf = !!document.getElementById('pdfHeaderFontSizeRange');
+            return {
+                hfs: usePdf ? document.getElementById('pdfHeaderFontSizeRange').value : (document.getElementById('headerFontSizeRange')?.value || '36'),
+                fs: usePdf ? document.getElementById('pdfFontSizeRange').value : (document.getElementById('fontSizeRange')?.value || '24'),
+                cs: usePdf ? document.getElementById('pdfChordSizeRange').value : (document.getElementById('chordSizeRange')?.value || '16'),
+                ls: usePdf ? document.getElementById('pdfLineSpacingRange').value : (document.getElementById('lineSpacingRange')?.value || '1.6'),
+                logoSz: usePdf ? document.getElementById('pdfLogoSizeRange').value : (document.getElementById('logoSizeRange')?.value || '180'),
+                title: (document.getElementById('pdfPreviewTitleInput')?.value?.trim()) || (document.getElementById('title')?.value?.trim()) || 'بدون عنوان'
+            };
+        };
+
+        window.syncPdfControlsFromEditor = function () {
+            [['pdfHeaderFontSizeRange', 'headerFontSizeRange', 'pdfHeaderFontSizeVal', 'headerFontSizeVal'],
+            ['pdfFontSizeRange', 'fontSizeRange', 'pdfFontSizeVal', 'fontSizeVal'],
+            ['pdfChordSizeRange', 'chordSizeRange', 'pdfChordSizeVal', 'chordSizeVal'],
+            ['pdfLineSpacingRange', 'lineSpacingRange', 'pdfLineSpacingVal', 'lineSpacingVal'],
+            ['pdfLogoSizeRange', 'logoSizeRange', 'pdfLogoSizeVal', 'logoSizeVal']].forEach(([p, m, pv, mv]) => {
+                const main = document.getElementById(m), pdf = document.getElementById(p);
+                if (main && pdf) {
+                    pdf.value = main.value;
+                    const pEl = document.getElementById(pv), mEl = document.getElementById(mv);
+                    if (pEl) pEl.innerText = main.value;
+                    if (mEl) mEl.innerText = main.value;
+                }
+            });
+            const pt = document.getElementById('pdfPreviewTitleInput'), mt = document.getElementById('title');
+            if (pt && mt) pt.value = mt.value || '';
+        };
+
+        window.applyPdfControlsToEditor = function () {
+            [['pdfHeaderFontSizeRange', 'headerFontSizeRange'], ['pdfFontSizeRange', 'fontSizeRange'],
+            ['pdfChordSizeRange', 'chordSizeRange'], ['pdfLineSpacingRange', 'lineSpacingRange'],
+            ['pdfLogoSizeRange', 'logoSizeRange']].forEach(([p, m]) => {
+                const pdf = document.getElementById(p), main = document.getElementById(m);
+                if (pdf && main) main.value = pdf.value;
+            });
+            const pt = document.getElementById('pdfPreviewTitleInput'), mt = document.getElementById('title');
+            if (pt && mt) { mt.value = pt.value; if (window.updatePreviewTitle) window.updatePreviewTitle(); }
+            updateStyles('main');
+        };
+
+        window.ensurePdfPreviewControls = function () {
+            if (document.getElementById('pdfPreviewControls')) return;
+            const container = document.getElementById('pdfPreviewContainer');
+            if (!container || !container.parentElement) return;
+            const parent = container.parentElement;
+            const flexRow = document.createElement('div');
+            flexRow.id = 'pdfPreviewBodyRow';
+            flexRow.style.cssText = 'display:flex;gap:20px;flex:1;min-height:280px;flex-wrap:wrap;margin:12px 0;';
+            const aside = document.createElement('aside');
+            aside.id = 'pdfPreviewControls';
+            aside.style.cssText = 'flex:0 0 250px;max-width:100%;overflow-y:auto;max-height:55vh;padding:14px;border-radius:16px;background:var(--surface-color);border:1px solid rgba(0,0,0,0.06);';
+            aside.innerHTML = '<p style="margin:0 0 12px;font-size:0.82rem;color:var(--text-muted);">عدّل الإعدادات وراجع المعاينة. التنزيل فقط عند «تنزيل PDF».</p>' +
+                '<div class="input-group" style="margin-bottom:10px;"><label>عنوان الترنيمة</label><input type="text" id="pdfPreviewTitleInput" style="border-radius:12px;width:100%;box-sizing:border-box;" oninput="onPdfPreviewControlChange()"></div>' +
+                '<div class="input-group" style="margin-bottom:8px;"><label style="font-size:0.85rem;">حجم العنوان: <span id="pdfHeaderFontSizeVal">36</span></label><input type="range" id="pdfHeaderFontSizeRange" min="20" max="60" value="36" oninput="onPdfPreviewControlChange()"></div>' +
+                '<div class="input-group" style="margin-bottom:8px;"><label style="font-size:0.85rem;">حجم الكلمات: <span id="pdfFontSizeVal">24</span></label><input type="range" id="pdfFontSizeRange" min="16" max="50" value="24" oninput="onPdfPreviewControlChange()"></div>' +
+                '<div class="input-group" style="margin-bottom:8px;"><label style="font-size:0.85rem;">حجم الكوردات: <span id="pdfChordSizeVal">16</span></label><input type="range" id="pdfChordSizeRange" min="12" max="36" value="16" oninput="onPdfPreviewControlChange()"></div>' +
+                '<div class="input-group" style="margin-bottom:8px;"><label style="font-size:0.85rem;">المسافة بين السطور: <span id="pdfLineSpacingVal">1.6</span></label><input type="range" id="pdfLineSpacingRange" min="1" max="4" step="0.1" value="1.6" oninput="onPdfPreviewControlChange()"></div>' +
+                '<div class="input-group" style="margin-bottom:12px;"><label style="font-size:0.85rem;">حجم اللوجو: <span id="pdfLogoSizeVal">180</span></label><input type="range" id="pdfLogoSizeRange" min="50" max="300" value="180" oninput="onPdfPreviewControlChange()"></div>' +
+                '<button type="button" class="btn-primary" style="width:100%;" onclick="document.getElementById(\'logoInput\').click()"><i data-lucide="image-plus"></i> تغيير الشعار</button>';
+            const scrollWrap = document.createElement('div');
+            scrollWrap.id = 'pdfPreviewScrollWrap';
+            scrollWrap.style.cssText = 'flex:1;min-width:260px;overflow:auto;background:#e0e0e0;border-radius:12px;padding:16px;max-height:55vh;';
+            const pagesWrap = document.createElement('div');
+            pagesWrap.id = 'pdfPreviewPagesWrap';
+            pagesWrap.style.cssText = 'position:relative;margin:0 auto;width:fit-content;';
+            parent.insertBefore(flexRow, container);
+            flexRow.appendChild(aside);
+            flexRow.appendChild(scrollWrap);
+            scrollWrap.appendChild(pagesWrap);
+            pagesWrap.appendChild(container);
+            container.style.cssText = 'background:white;box-shadow:0 4px 20px rgba(0,0,0,0.15);position:relative;z-index:1;';
+        };
+
+        window.onPdfPreviewControlChange = function () {
+            [['pdfHeaderFontSizeRange', 'pdfHeaderFontSizeVal'], ['pdfFontSizeRange', 'pdfFontSizeVal'],
+            ['pdfChordSizeRange', 'pdfChordSizeVal'], ['pdfLineSpacingRange', 'pdfLineSpacingVal'],
+            ['pdfLogoSizeRange', 'pdfLogoSizeVal']].forEach(([id, vid]) => {
+                const el = document.getElementById(id), v = document.getElementById(vid);
+                if (el && v) v.innerText = el.value;
+            });
+            window.applyPdfControlsToEditor();
+            window.refreshPdfPreview();
+        };
+
+        window.updatePdfPageCount = function (contentEl) {
+            const badge = document.getElementById('pdfPageCountText');
+            if (!badge || !contentEl) return;
+            const pages = Math.max(1, Math.ceil((contentEl.scrollHeight || PDF_A4_HEIGHT) / PDF_A4_HEIGHT));
+            badge.innerText = pages === 1 ? 'صفحة واحدة' : (pages === 2 ? 'صفحتان' : pages + ' صفحات');
+            const pagesWrap = document.getElementById('pdfPreviewPagesWrap');
+            if (!pagesWrap) return;
+            pagesWrap.querySelectorAll('.pdf-page-break-line').forEach(el => el.remove());
+            for (let p = 1; p < pages; p++) {
+                const line = document.createElement('div');
+                line.className = 'pdf-page-break-line';
+                line.style.cssText = 'position:absolute;left:-8px;right:-8px;top:' + (p * PDF_A4_HEIGHT) + 'px;border-top:2px dashed rgba(108,92,231,0.55);pointer-events:none;z-index:5;';
+                const label = document.createElement('span');
+                label.style.cssText = 'position:absolute;left:8px;top:-18px;font-size:11px;color:#6c5ce7;font-weight:700;background:#fff;padding:2px 8px;border-radius:8px;';
+                label.textContent = 'صفحة ' + (p + 1);
+                line.appendChild(label);
+                pagesWrap.appendChild(line);
+            }
+        };
+
+        window.buildPdfPreviewClone = function () {
             const previewContainer = document.getElementById("previewContent");
-            if (!previewContainer) return;
-
-            const modalInfoArea = document.getElementById("pdfPreviewContainer");
-            if (!modalInfoArea) return;
-
-            // خيار آمن: إنشاء حاوية مخفية مؤقتة بعرض ثابت لضمان دقة العمليات
+            if (!previewContainer) return null;
+            
+            const sty = window.getPdfStyleValues();
+            const pdfPageWidth = 794; 
+            
             const exportBuffer = document.createElement('div');
-            exportBuffer.style.position = 'absolute';
-            exportBuffer.style.left = '-10000px';
-            exportBuffer.style.top = '0';
-            exportBuffer.style.width = '794px'; // عرض A4 القياسي بـ 96dpi
+            exportBuffer.style.cssText = 'position:absolute;left:-10000px;top:0;width:' + pdfPageWidth + 'px;';
             document.body.appendChild(exportBuffer);
 
-            // استنساخ المحتوى إلى الحاوية المعزولة
             const clone = previewContainer.cloneNode(true);
             exportBuffer.appendChild(clone);
 
-            // ضبط العرض الثابت (A4: 794px، المحتوى الداخلي 714px بعد الهوامش)
-            const pdfPageWidth = 794;
-            const pdfContentWidth = 714; // 794 - 40*2
-            clone.style.width = pdfPageWidth + 'px';
-            clone.style.margin = '0';
-            clone.style.padding = '40px'; 
-            clone.style.background = 'white';
-            clone.style.color = '#333';
-            clone.style.fontFamily = "'Cairo', sans-serif";
-            clone.style.boxSizing = 'border-box';
-            clone.style.display = 'block';
-            clone.style.maxWidth = pdfPageWidth + 'px';
-            clone.style.minWidth = pdfPageWidth + 'px';
+            const emptyState = clone.querySelector('#emptyStateMsg');
+            if (emptyState) emptyState.remove();
 
-            // نسخ متغيرات CSS من منطقة المعاينة لضمان تطابق الخطوط والأحجام
-            const captureArea = document.getElementById("captureArea");
-            if (captureArea) {
-                const cs = getComputedStyle(captureArea);
-                const fontSize = cs.getPropertyValue('--preview-font-size') || '24px';
-                const chordSize = cs.getPropertyValue('--chord-size') || '16px';
-                const lineSpacing = cs.getPropertyValue('--line-spacing') || '1.6em';
-                clone.style.setProperty('--preview-font-size', fontSize);
-                clone.style.setProperty('--chord-size', chordSize);
-                clone.style.setProperty('--line-spacing', lineSpacing);
+            // تطبيق التنسيقات على الحاوية فقط دون المساس بالأسطر والكلمات
+            clone.style.cssText = `
+                width: ${pdfPageWidth}px;
+                min-height: 1123px;
+                margin: 0;
+                padding: 40px;
+                background: white;
+                color: black;
+                font-family: 'Cairo', sans-serif;
+                box-sizing: border-box;
+                display: block;
+                position: relative;
+                direction: rtl;
+                text-align: right;
+            `;
+            
+            // تمرير المتغيرات بدقة لضمان عمل المسافات بين السطور
+            clone.style.setProperty('--preview-font-size', sty.fs + 'px');
+            clone.style.setProperty('--header-font-size', sty.hfs + 'px');
+            clone.style.setProperty('--chord-size', sty.cs + 'px');
+            clone.style.setProperty('--line-spacing', sty.ls); // تمرير الرقم كما هو (مثلاً 1.6)
+            clone.style.setProperty('--logo-size', sty.logoSz + 'px');
+
+            // ضبط اللوجو والعنوان والعناصر الأساسية
+            const logo = clone.querySelector('.logo-display');
+            if (logo) {
+                logo.style.width = sty.logoSz + 'px';
+                logo.style.height = 'auto';
+                logo.style.position = 'absolute';
+                logo.style.top = '0';
+                logo.style.right = '0';
+            }
+            const titleEl = clone.querySelector('.song-title');
+            if (titleEl) {
+                titleEl.innerText = sty.title;
+                titleEl.style.fontSize = sty.hfs + 'px';
+                titleEl.style.textAlign = 'center';
+                titleEl.style.marginBottom = '20px';
             }
 
-            // إصلاح الترويسة باستخدام Flexbox لمنع التداخل
-            const songHeader = clone.querySelector('.song-header');
-            if (songHeader) {
-                songHeader.style.display = 'flex';
-                songHeader.style.flexDirection = 'row-reverse'; // ليبدأ الشعار من اليمين
-                songHeader.style.justifyContent = 'space-between';
-                songHeader.style.alignItems = 'flex-start';
-                songHeader.style.gap = '20px';
-                songHeader.style.marginBottom = '20px';
-                songHeader.style.position = 'static';
-
-                const logo = songHeader.querySelector('.logo-display');
-                if (logo) {
-                    logo.style.position = 'static';
-                    logo.style.maxWidth = '100px';
-                    logo.style.maxHeight = '80px';
-                    logo.style.height = 'auto';
-                    logo.style.objectFit = 'contain';
-                    logo.style.order = '1';
-                }
-
-                const titleMetaContainer = document.createElement('div');
-                titleMetaContainer.style.flex = '1';
-                titleMetaContainer.style.textAlign = 'right';
-                titleMetaContainer.style.order = '2';
-
-                const titleEl = songHeader.querySelector('.song-title');
-                const metaEl = songHeader.querySelector('.song-meta');
+            // إصلاح الأقواس والنصوص وتنسيق الأسطر لضمان عدم تداخل الكوردات
+            clone.querySelectorAll('.line').forEach(line => {
+                line.style.direction = 'rtl';
+                line.style.textAlign = 'right';
+                line.style.position = 'relative';
+                line.style.paddingTop = '1.7em'; // مساحة إجبارية للكوردات لمنع التداخل
+                line.style.marginBottom = '0.5em';
+                line.style.display = 'block';
+                line.style.lineHeight = sty.ls;
                 
-                if (titleEl) titleMetaContainer.appendChild(titleEl);
-                if (metaEl) titleMetaContainer.appendChild(metaEl);
-                
-                // تنظيف الترويسة القديمة وإضافة الحاوية الجديدة
-                songHeader.innerHTML = '';
-                if (logo) songHeader.appendChild(logo);
-                songHeader.appendChild(titleMetaContainer);
-            }
-
-            const clonedLines = clone.querySelectorAll('.line');
-            const fontSizeInput = document.getElementById("fontSizeRange");
-            const fontSize = fontSizeInput ? parseFloat(fontSizeInput.value) || 24 : 24;
-            const chordSizeVal = document.getElementById("chordSizeRange") ? document.getElementById("chordSizeRange").value : 16;
-
-            clonedLines.forEach((clonedLine) => {
-                clonedLine.querySelectorAll('.chord').forEach(c => c.remove());
-                const lineId = clonedLine.dataset.lineId;
-                const chords = state.chordMap[lineId];
-                if (!chords || chords.length === 0) return;
-
-                clonedLine.style.position = 'relative';
-                clonedLine.style.display = 'block';
-                clonedLine.style.paddingTop = '1.7em'; 
-                clonedLine.style.minHeight = '3.5em';
-                clonedLine.style.width = '100%';
-                clonedLine.style.boxSizing = 'border-box';
-
-                const sortedChords = [...chords].sort((a, b) => (b.rightEm || 0) - (a.rightEm || 0));
-
-                sortedChords.forEach((cData) => {
-                    let rightEm = cData.rightEm;
-                    if (rightEm === undefined) {
-                        if (cData.rightPx !== undefined) rightEm = cData.rightPx / fontSize;
-                        else if (cData.xPercent !== undefined) rightEm = ((100 - cData.xPercent) / 100) * pdfContentWidth / fontSize;
-                        else return;
-                    }
-
-                    const newChord = document.createElement('span');
-                    newChord.innerText = cData.chord;
-                    newChord.className = "chord";
-
-                    newChord.style.position = 'absolute';
-                    newChord.style.color = '#0d9488';
-                    newChord.style.fontSize = chordSizeVal + 'px';
-                    newChord.style.fontWeight = '700';
-                    newChord.style.fontFamily = "'Cairo', sans-serif";
-                    newChord.style.top = '0';
-                    newChord.style.backgroundColor = 'transparent';
-                    newChord.style.boxShadow = 'none';
-                    newChord.style.transform = 'translateX(50%)';
-                    newChord.style.direction = 'ltr';
-
-                    const rightPx = rightEm * fontSize;
-                    const rightPercent = pdfContentWidth > 0 ? (rightPx / pdfContentWidth) * 100 : 0;
-                    newChord.style.right = Math.min(100, Math.max(0, rightPercent)) + '%';
-                    newChord.style.left = 'auto';
-
-                    clonedLine.appendChild(newChord);
+                line.querySelectorAll('.chord').forEach(chord => {
+                    chord.style.fontSize = sty.cs + 'px';
+                    chord.style.top = '0'; // وضع الكورد في أعلى المساحة الموفرة
+                    chord.style.color = '#0d9488';
                 });
             });
 
-            const lyricsWrapper = clone.querySelector('.lyrics-wrapper');
-            if (lyricsWrapper) {
-                lyricsWrapper.style.width = '100%';
-                lyricsWrapper.style.maxWidth = pdfContentWidth + 'px';
-                lyricsWrapper.style.boxSizing = 'border-box';
-            }
+            document.body.removeChild(exportBuffer);
+            return clone;
+        };
 
+        window.refreshPdfPreview = function () {
+            const modalInfoArea = document.getElementById('pdfPreviewContainer');
+            if (!modalInfoArea) return;
+            const clone = window.buildPdfPreviewClone();
+            if (!clone) return;
             modalInfoArea.innerHTML = '';
             modalInfoArea.appendChild(clone);
-            
-            // تنظيف الحاوية المؤقتة
-            document.body.removeChild(exportBuffer);
-
-            const modal = document.getElementById('pdfPreviewModalOverlay');
-            if (modal) {
-                modal.classList.add('active');
-            }
+            window.updatePdfPageCount(clone);
             if (window.lucide) window.lucide.createIcons();
+        };
+
+        window.openPdfPreview = function () {
+            if (typeof html2pdf === 'undefined') {
+                alert("تعذر تحميل مكتبة PDF. يرجى التأكد من اتصالك بالإنترنت.");
+                return;
+            }
+            window.ensurePdfPreviewControls();
+            window.syncPdfControlsFromEditor();
+            window.refreshPdfPreview();
+            const modal = document.getElementById('pdfPreviewModalOverlay');
+            if (modal) modal.classList.add('active');
+            if (window.lucide) window.lucide.createIcons();
+        };
+
+        window.exportAsPDF = function () {
+            window.openPdfPreview();
         };
 
         window.handleLogoUpload = function (event) {
@@ -4961,6 +5053,10 @@
                 event.target.value = ''; // Reset input to allow same file re-upload
                 render();
                 autoSave();
+                const pdfModal = document.getElementById('pdfPreviewModalOverlay');
+                if (pdfModal && pdfModal.classList.contains('active') && window.refreshPdfPreview) {
+                    window.refreshPdfPreview();
+                }
             };
             reader.readAsDataURL(file);
         };
@@ -4982,59 +5078,79 @@
             if (window.applyAutosaveData) window.applyAutosaveData(song);
             if (typeof render === 'function') render();
             await new Promise(r => setTimeout(r, 350));
-            if (window.exportAsPDF) window.exportAsPDF();
-            await new Promise(r => setTimeout(r, 250));
-            if (window.downloadPDF) window.downloadPDF();
+            if (window.openPdfPreview) window.openPdfPreview();
         };
 
-        window.downloadPDF = function () {
-            if (typeof html2pdf === 'undefined') {
-                alert("تعذر تحميل مكتبة PDF. يرجى التأكد من اتصالك بالإنترنت.");
-                return;
-            }
-
+        window.downloadPDF = async function () {
             const modalInfoArea = document.getElementById("pdfPreviewContainer");
             if (!modalInfoArea || !modalInfoArea.firstChild) {
                 alert("لا يوجد محتوى للتصدير.");
                 return;
             }
 
+            const btn = event?.target?.closest('button') || { innerHTML: '', disabled: false };
+            const originalBtnHtml = btn.innerHTML;
+            btn.innerHTML = '<i data-lucide="loader" class="spin"></i> جاري التقاط المعاينة...';
+            btn.disabled = true;
+            if (window.lucide) window.lucide.createIcons();
+
+            const pdfTitle = document.getElementById('pdfPreviewTitleInput');
             const titleInput = document.getElementById("title");
-            const rawFileName = titleInput && titleInput.value.trim() !== "" ? titleInput.value.trim() : "taraneem-export";
-            // Sanitize filename: remove problematic characters for Windows/Mobile
+            const rawFileName = (pdfTitle?.value?.trim()) || (titleInput?.value?.trim()) || "taraneem-export";
             const fileName = rawFileName.replace(/[\\/:*?"<>|]/g, '_');
 
-            const opt = {
-                margin: 0, 
-                filename: `${fileName}.pdf`,
-                image: { type: 'jpeg', quality: 0.98 },
-                html2canvas: { 
-                    scale: 3, 
-                    useCORS: true, 
-                    letterRendering: true,
-                    width: 794,
-                    logging: false
-                },
-                jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-            };
-
             const theClone = modalInfoArea.firstChild;
-            if (window.showSaveStatus) window.showSaveStatus("جاري تحضير الملف...");
+            if (window.showSaveStatus) window.showSaveStatus("جاري تحويل المعاينة لصورة عالية الجودة...");
 
             try {
-                // Ensure the clone is visible for html2canvas to work correctly
-                theClone.style.display = 'block';
-                theClone.style.visibility = 'visible';
-
-                html2pdf().set(opt).from(theClone).save().then(() => {
-                    if (window.showSaveStatus) window.showSaveStatus("تم التنزيل بنجاح! 📄🎉");
-                }).catch(err => {
-                    console.error("PDF generation promise error: ", err);
-                    alert("حدث خطأ أثناء حفظ الملف: " + err.message);
+                // التقاط صورة للمحتوى بدقة عالية جداً لضمان وضوح الكلمات والكوردات
+                const canvas = await html2canvas(theClone, {
+                    scale: 3, // دقة فائقة الوضوح
+                    useCORS: true,
+                    logging: false,
+                    backgroundColor: '#ffffff',
+                    width: theClone.scrollWidth,
+                    height: theClone.scrollHeight
                 });
+
+                const imgData = canvas.toDataURL('image/jpeg', 1.0);
+                const { jsPDF } = window.jspdf;
+                const pdf = new jsPDF('p', 'mm', 'a4');
+                
+                const pdfWidth = pdf.internal.pageSize.getWidth();
+                const pdfHeight = pdf.internal.pageSize.getHeight();
+                
+                // حساب الأبعاد للحفاظ على النسبة
+                const imgProps = pdf.getImageProperties(imgData);
+                const ratio = imgProps.width / imgProps.height;
+                const renderWidth = pdfWidth;
+                const renderHeight = renderWidth / ratio;
+
+                let heightLeft = renderHeight;
+                let position = 0;
+
+                // إضافة الصفحة الأولى
+                pdf.addImage(imgData, 'JPEG', 0, position, renderWidth, renderHeight);
+                heightLeft -= pdfHeight;
+
+                // إذا كان النص طويلاً، نضيف صفحات إضافية
+                while (heightLeft > 0) {
+                    position = heightLeft - renderHeight;
+                    pdf.addPage();
+                    pdf.addImage(imgData, 'JPEG', 0, position, renderWidth, renderHeight);
+                    heightLeft -= pdfHeight;
+                }
+
+                pdf.save(`${fileName}.pdf`);
+                if (window.showSaveStatus) window.showSaveStatus("تم التصدير بنجاح! 📄✨");
+                closePdfPreviewModal();
             } catch (err) {
-                console.error("PDF generation catch: ", err);
-                alert("حدث خطأ غير متوقع: " + err.message);
+                console.error("PDF generation error: ", err);
+                alert("حدث خطأ أثناء التصدير: " + err.message);
+            } finally {
+                btn.innerHTML = originalBtnHtml;
+                btn.disabled = false;
+                if (window.lucide) window.lucide.createIcons();
             }
         };
 
