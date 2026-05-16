@@ -4889,19 +4889,53 @@
                 '<div class="input-group" style="margin-bottom:8px;"><label style="font-size:0.85rem;">حجم الكوردات: <span id="pdfChordSizeVal">16</span></label><input type="range" id="pdfChordSizeRange" min="12" max="36" value="16" oninput="onPdfPreviewControlChange()"></div>' +
                 '<div class="input-group" style="margin-bottom:8px;"><label style="font-size:0.85rem;">المسافة بين السطور: <span id="pdfLineSpacingVal">1.6</span></label><input type="range" id="pdfLineSpacingRange" min="1" max="4" step="0.1" value="1.6" oninput="onPdfPreviewControlChange()"></div>' +
                 '<div class="input-group" style="margin-bottom:12px;"><label style="font-size:0.85rem;">حجم اللوجو: <span id="pdfLogoSizeVal">180</span></label><input type="range" id="pdfLogoSizeRange" min="50" max="300" value="180" oninput="onPdfPreviewControlChange()"></div>' +
+                '<div class="input-group" style="margin-bottom:15px; background: var(--bg-color); padding: 10px; border-radius: 12px; border: 1px solid rgba(0,0,0,0.05);">' +
+                    '<label style="font-size:0.85rem; color: var(--primary-color); font-weight: 800; margin-bottom: 8px; display: block;"><i data-lucide="zoom-in" style="width:14px; vertical-align:middle;"></i> حجم الرؤية (Zoom): <span id="pdfZoomVal">60%</span></label>' +
+                    '<input type="range" id="pdfZoomRange" min="20" max="150" value="60" oninput="updatePdfZoom(this.value)">' +
+                    '<div style="display: flex; gap: 5px; margin-top: 8px;">' +
+                        '<button type="button" class="btn-primary" style="padding: 4px 8px; font-size: 0.7rem; flex: 1;" onclick="updatePdfZoom(\'fit\')">رؤية كاملة</button>' +
+                        '<button type="button" class="btn-primary" style="padding: 4px 8px; font-size: 0.7rem; flex: 1;" onclick="updatePdfZoom(100)">100%</button>' +
+                    '</div>' +
+                '</div>' +
                 '<button type="button" class="btn-primary" style="width:100%;" onclick="document.getElementById(\'logoInput\').click()"><i data-lucide="image-plus"></i> تغيير الشعار</button>';
             const scrollWrap = document.createElement('div');
             scrollWrap.id = 'pdfPreviewScrollWrap';
-            scrollWrap.style.cssText = 'flex:1;min-width:260px;overflow:auto;background:#e0e0e0;border-radius:12px;padding:16px;max-height:55vh;';
+            scrollWrap.style.cssText = 'flex:1;min-width:260px;overflow:auto;background:#e0e0e0;border-radius:12px;padding:16px;max-height:55vh; display: flex; justify-content: center; align-items: flex-start;';
             const pagesWrap = document.createElement('div');
             pagesWrap.id = 'pdfPreviewPagesWrap';
-            pagesWrap.style.cssText = 'position:relative;margin:0 auto;width:fit-content;';
+            pagesWrap.style.cssText = 'position:relative; margin:0 auto; transform-origin: top center; transition: transform 0.2s ease-out;';
             parent.insertBefore(flexRow, container);
             flexRow.appendChild(aside);
             flexRow.appendChild(scrollWrap);
             scrollWrap.appendChild(pagesWrap);
             pagesWrap.appendChild(container);
-            container.style.cssText = 'background:white;box-shadow:0 4px 20px rgba(0,0,0,0.15);position:relative;z-index:1;';
+            container.style.cssText = 'background:white; box-shadow:0 4px 20px rgba(0,0,0,0.15); position:relative; z-index:1; width: 794px; min-height: 1123px;';
+        };
+
+        window.updatePdfZoom = function (val) {
+            const wrap = document.getElementById('pdfPreviewPagesWrap');
+            const scrollWrap = document.getElementById('pdfPreviewScrollWrap');
+            const range = document.getElementById('pdfZoomRange');
+            const valText = document.getElementById('pdfZoomVal');
+            if (!wrap || !range || !valText) return;
+
+            let zoomLevel;
+            if (val === 'fit') {
+                const availableWidth = scrollWrap.clientWidth - 40;
+                zoomLevel = Math.floor((availableWidth / 794) * 100);
+            } else {
+                zoomLevel = parseInt(val);
+            }
+
+            zoomLevel = Math.max(10, Math.min(zoomLevel, 200)); // حماية
+            wrap.style.transform = `scale(${zoomLevel / 100})`;
+            range.value = zoomLevel;
+            valText.innerText = zoomLevel + '%';
+
+            // تعديل ارتفاع الحاوية الخارجية ليتناسب مع التقليص
+            const container = document.getElementById('pdfPreviewContainer');
+            const scaledHeight = container.scrollHeight * (zoomLevel / 100);
+            wrap.style.height = scaledHeight + 'px';
         };
 
         window.onPdfPreviewControlChange = function () {
@@ -5032,6 +5066,12 @@
             window.ensurePdfPreviewControls();
             window.syncPdfControlsFromEditor();
             window.refreshPdfPreview();
+            
+            // تطبيق "رؤية كاملة" تلقائياً عند الفتح
+            setTimeout(() => {
+                window.updatePdfZoom('fit');
+            }, 50);
+
             const modal = document.getElementById('pdfPreviewModalOverlay');
             if (modal) modal.classList.add('active');
             if (window.lucide) window.lucide.createIcons();
@@ -5083,14 +5123,15 @@
 
         window.downloadPDF = async function () {
             const modalInfoArea = document.getElementById("pdfPreviewContainer");
-            if (!modalInfoArea || !modalInfoArea.firstChild) {
+            const pagesWrap = document.getElementById('pdfPreviewPagesWrap');
+            if (!modalInfoArea || !pagesWrap || !modalInfoArea.firstChild) {
                 alert("لا يوجد محتوى للتصدير.");
                 return;
             }
 
             const btn = event?.target?.closest('button') || { innerHTML: '', disabled: false };
             const originalBtnHtml = btn.innerHTML;
-            btn.innerHTML = '<i data-lucide="loader" class="spin"></i> جاري التقاط المعاينة...';
+            btn.innerHTML = '<i data-lucide="loader" class="spin"></i> جاري التصوير بدقة عالية...';
             btn.disabled = true;
             if (window.lucide) window.lucide.createIcons();
 
@@ -5100,27 +5141,36 @@
             const fileName = rawFileName.replace(/[\\/:*?"<>|]/g, '_');
 
             const theClone = modalInfoArea.firstChild;
-            if (window.showSaveStatus) window.showSaveStatus("جاري تحويل المعاينة لصورة عالية الجودة...");
+            
+            // تخزين حالة الـ Zoom الحالية لإعادتها بعد التصدير
+            const originalTransform = pagesWrap.style.transform;
+            const originalHeight = pagesWrap.style.height;
+            const originalRangeVal = document.getElementById('pdfZoomRange').value;
+
+            if (window.showSaveStatus) window.showSaveStatus("جاري التقاط صورة طبق الأصل للملف... 📸");
 
             try {
-                // التقاط صورة للمحتوى بدقة عالية جداً لضمان وضوح الكلمات والكوردات
+                // خطوة حاسمة: تصفير الـ Zoom مؤقتاً قبل التصوير لضمان دقة الأبعاد 1:1
+                pagesWrap.style.transform = 'scale(1)';
+                pagesWrap.style.height = 'auto';
+
+                // التقاط صورة للمحتوى بدقة عالية جداً
                 const canvas = await html2canvas(theClone, {
-                    scale: 3, // دقة فائقة الوضوح
+                    scale: 3, // دقة Retina فائقة
                     useCORS: true,
                     logging: false,
                     backgroundColor: '#ffffff',
-                    width: theClone.scrollWidth,
+                    width: 794, // عرض ورقة A4 الثابت
                     height: theClone.scrollHeight
                 });
 
-                const imgData = canvas.toDataURL('image/jpeg', 1.0);
+                const imgData = canvas.toDataURL('image/jpeg', 0.95);
                 const { jsPDF } = window.jspdf;
                 const pdf = new jsPDF('p', 'mm', 'a4');
                 
                 const pdfWidth = pdf.internal.pageSize.getWidth();
                 const pdfHeight = pdf.internal.pageSize.getHeight();
                 
-                // حساب الأبعاد للحفاظ على النسبة
                 const imgProps = pdf.getImageProperties(imgData);
                 const ratio = imgProps.width / imgProps.height;
                 const renderWidth = pdfWidth;
@@ -5129,11 +5179,9 @@
                 let heightLeft = renderHeight;
                 let position = 0;
 
-                // إضافة الصفحة الأولى
                 pdf.addImage(imgData, 'JPEG', 0, position, renderWidth, renderHeight);
                 heightLeft -= pdfHeight;
 
-                // إذا كان النص طويلاً، نضيف صفحات إضافية
                 while (heightLeft > 0) {
                     position = heightLeft - renderHeight;
                     pdf.addPage();
@@ -5142,12 +5190,15 @@
                 }
 
                 pdf.save(`${fileName}.pdf`);
-                if (window.showSaveStatus) window.showSaveStatus("تم التصدير بنجاح! 📄✨");
+                if (window.showSaveStatus) window.showSaveStatus("تم التنزيل بنجاح! 📄✨");
                 closePdfPreviewModal();
             } catch (err) {
                 console.error("PDF generation error: ", err);
                 alert("حدث خطأ أثناء التصدير: " + err.message);
             } finally {
+                // إعادة حالة الـ Zoom كما كانت للمستخدم
+                pagesWrap.style.transform = originalTransform;
+                pagesWrap.style.height = originalHeight;
                 btn.innerHTML = originalBtnHtml;
                 btn.disabled = false;
                 if (window.lucide) window.lucide.createIcons();
